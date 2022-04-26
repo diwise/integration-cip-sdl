@@ -1,0 +1,14 @@
+version: '3'
+services:
+  integration-cip-sdl:
+    image: diwise/integration-cip-sdl:latest
+    build:
+      context: ..
+      dockerfile: ./deployments/Dockerfile
+    restart: always
+    environment:
+      CITYWORK_ENABLED: 'true'
+      SDL_KARTA_URL: $SDL_KARTA_URL
+      CONTEXT_BROKER_URL: $CONTEXT_BROKER_URL
+
+  
