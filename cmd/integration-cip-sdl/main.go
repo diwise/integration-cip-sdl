@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/diwise/integration-cip-sdl/internal/domain"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/application/citywork"
-	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
