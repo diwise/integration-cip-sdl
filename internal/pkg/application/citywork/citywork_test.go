@@ -1,6 +1,7 @@
 package citywork
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/matryer/is"
@@ -34,6 +35,17 @@ func TestModelCanBeConvertedToCityWork(t *testing.T) {
 	cw := toCityWorkModel(m.Features[0])
 
 	is.Equal(cw.ID, "urn:ngsi-ld:CityWork:4905302560875326p48:8785065399290166p47:20220420:20220531")
+}
+
+func toModel(resp []byte) (*sdlResponse, error) {
+	var m sdlResponse
+
+	err := json.Unmarshal(resp, &m)
+	if err != nil {
+		return nil, err
+	}
+
+	return &m, nil
 }
 
 func testSetup(t *testing.T) *is.I {

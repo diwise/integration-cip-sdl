@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 
 	"github.com/rs/zerolog"
@@ -19,7 +18,7 @@ import (
 var tracer = otel.Tracer("context-broker-client")
 
 type ContextBrokerClient interface {
-	Post(ctx context.Context, entity interface{}) error
+	AddEntity(ctx context.Context, entity interface{}) error
 }
 
 type contextBrokerClient struct {
@@ -34,7 +33,7 @@ func NewContextBrokerClient(baseUrl string, log zerolog.Logger) ContextBrokerCli
 	}
 }
 
-func (c *contextBrokerClient) Post(ctx context.Context, entity interface{}) error {
+func (c *contextBrokerClient) AddEntity(ctx context.Context, entity interface{}) error {
 	var err error
 	ctx, span := tracer.Start(ctx, "create-entity")
 	defer func() {
@@ -67,11 +66,6 @@ func (c *contextBrokerClient) Post(ctx context.Context, entity interface{}) erro
 	}
 
 	req.Header.Add("Content-Type", "application/ld+json")
-
-	dump, err := httputil.DumpRequest(req, true)
-	if err != nil {
-		c.log.Debug().Msg(string(dump))
-	}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {

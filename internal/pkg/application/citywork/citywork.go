@@ -9,13 +9,11 @@ import (
 	"github.com/diwise/integration-cip-sdl/internal/pkg/fiware"
 	geojson "github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/geojson"
 	ngsitypes "github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/types"
-
 	"github.com/rs/zerolog"
 )
 
 type CityWorkSvc interface {
 	Start(ctx context.Context) error
-	publishCityWorkToContextBroker(ctx context.Context, citywork fiware.CityWork) error
 }
 
 func NewCityWorkService(log zerolog.Logger, s SdlClient, c domain.ContextBrokerClient) CityWorkSvc {
@@ -44,9 +42,10 @@ func (cw *cw) Start(ctx context.Context) error {
 			continue
 		}
 
-		m, err := toModel(response)
+		var m sdlResponse
+		err = json.Unmarshal(response, &m)
 		if err != nil {
-			cw.log.Error().Err(err).Msg("failed to convert to model")
+			cw.log.Error().Err(err).Msg("failed to unmarshal model")
 			continue
 		}
 
@@ -57,26 +56,16 @@ func (cw *cw) Start(ctx context.Context) error {
 			}
 
 			cwModel := toCityWorkModel(f)
-			err = cw.publishCityWorkToContextBroker(ctx, cwModel)
+
+			err = cw.contextbroker.AddEntity(ctx, cwModel)
 			if err != nil {
-				cw.log.Error().Err(err).Msg("failed to publish")
+				cw.log.Error().Err(err).Msg("failed to add entity")
 				continue
 			}
 
 			previous[featureID] = featureID
 		}
 	}
-}
-
-func toModel(resp []byte) (*sdlResponse, error) {
-	var m sdlResponse
-
-	err := json.Unmarshal(resp, &m)
-	if err != nil {
-		return nil, err
-	}
-
-	return &m, nil
 }
 
 func toCityWorkModel(sf sdlFeature) fiware.CityWork {
@@ -90,12 +79,4 @@ func toCityWorkModel(sf sdlFeature) fiware.CityWork {
 	cw.Description = ngsitypes.NewTextProperty(sf.Properties.Description)
 
 	return cw
-}
-
-func (cw *cw) publishCityWorkToContextBroker(ctx context.Context, citywork fiware.CityWork) error {
-	if err := cw.contextbroker.Post(ctx, citywork); err != nil {
-		cw.log.Error().Err(err)
-		return err
-	}
-	return nil
 }
