@@ -3,9 +3,10 @@ package citywork
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
-	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
+	"github.com/diwise/integration-cip-sdl/internal/domain"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/fiware"
 	geojson "github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/geojson"
 	ngsitypes "github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/types"
@@ -14,6 +15,7 @@ import (
 
 type CityWorkSvc interface {
 	Start(ctx context.Context) error
+	getAndPublishCityWork(ctx context.Context) error
 }
 
 func NewCityWorkService(log zerolog.Logger, s SdlClient, c domain.ContextBrokerClient) CityWorkSvc {
@@ -36,36 +38,46 @@ func (cw *cw) Start(ctx context.Context) error {
 	for {
 		time.Sleep(10 * time.Second)
 
-		response, err := cw.sdlClient.Get(ctx)
+		err := cw.getAndPublishCityWork(ctx)
 		if err != nil {
-			cw.log.Error().Err(err).Msg("failed to get city work")
+			cw.log.Error().Err(err).Msg("failed to get city work, attempting again in 10 seconds")
 			continue
-		}
-
-		var m sdlResponse
-		err = json.Unmarshal(response, &m)
-		if err != nil {
-			cw.log.Error().Err(err).Msg("failed to unmarshal model")
-			continue
-		}
-
-		for _, f := range m.Features {
-			featureID := f.ID()
-			if _, exists := previous[featureID]; exists {
-				continue
-			}
-
-			cwModel := toCityWorkModel(f)
-
-			err = cw.contextbroker.AddEntity(ctx, cwModel)
-			if err != nil {
-				cw.log.Error().Err(err).Msg("failed to add entity")
-				continue
-			}
-
-			previous[featureID] = featureID
 		}
 	}
+}
+
+func (cw *cw) getAndPublishCityWork(ctx context.Context) error {
+	response, err := cw.sdlClient.Get(ctx)
+	if err != nil {
+		cw.log.Error().Err(err).Msg("failed to get city work")
+		return fmt.Errorf("failed to get city work")
+	}
+
+	var m sdlResponse
+	err = json.Unmarshal(response, &m)
+	if err != nil {
+		cw.log.Error().Err(err).Msg("failed to unmarshal model")
+		return fmt.Errorf("failed to unmarshal model")
+	}
+
+	for _, f := range m.Features {
+		featureID := f.ID()
+		if _, exists := previous[featureID]; exists {
+			continue
+		}
+
+		cwModel := toCityWorkModel(f)
+
+		err = cw.contextbroker.AddEntity(ctx, cwModel)
+		if err != nil {
+			cw.log.Error().Err(err).Msg("failed to add entity")
+			continue
+		}
+
+		previous[featureID] = featureID
+	}
+
+	return nil
 }
 
 func toCityWorkModel(sf sdlFeature) fiware.CityWork {

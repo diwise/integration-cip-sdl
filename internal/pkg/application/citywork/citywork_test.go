@@ -1,14 +1,19 @@
 package citywork
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/diwise/integration-cip-sdl/internal/domain"
 	"github.com/matryer/is"
+	"github.com/rs/zerolog"
 )
 
 func TestSimpleModelCanBeCreated(t *testing.T) {
-	is := testSetup(t)
+	is, _ := testSetup(t, 0, "")
 	m, err := toModel([]byte(simple))
 
 	is.True(m != nil)
@@ -16,7 +21,7 @@ func TestSimpleModelCanBeCreated(t *testing.T) {
 }
 
 func TestComplexModelCanBeCreated(t *testing.T) {
-	is := testSetup(t)
+	is, _ := testSetup(t, 0, "")
 	m, _ := toModel([]byte(complex))
 
 	long, lat, err := m.Features[0].Geometry.AsPoint()
@@ -29,12 +34,64 @@ func TestComplexModelCanBeCreated(t *testing.T) {
 }
 
 func TestModelCanBeConvertedToCityWork(t *testing.T) {
-	is := testSetup(t)
+	is, _ := testSetup(t, 0, "")
 	m, _ := toModel([]byte(simple))
 
 	cw := toCityWorkModel(m.Features[0])
 
 	is.Equal(cw.ID, "urn:ngsi-ld:CityWork:4905302560875326p48:8785065399290166p47:20220420:20220531")
+}
+
+func TestThatGetAndPublishWorksWithSimpleResponse(t *testing.T) {
+	is, cw := testSetup(t, http.StatusOK, simple)
+
+	err := cw.getAndPublishCityWork(context.Background())
+	is.NoErr(err)
+}
+
+func TestThatGetAndPublishWorksWithComplexResponse(t *testing.T) {
+	is, cw := testSetup(t, http.StatusOK, complex)
+
+	err := cw.getAndPublishCityWork(context.Background())
+	is.NoErr(err)
+}
+
+func TestThatGetAndPublishFailsOnInternalServerError(t *testing.T) {
+	is, cw := testSetup(t, http.StatusInternalServerError, "")
+
+	err := cw.getAndPublishCityWork(context.Background())
+	is.True(err != nil)
+}
+
+func TestThatGetAndPublishFailsOnImproperJSON(t *testing.T) {
+	is, cw := testSetup(t, http.StatusOK, complex+"}")
+
+	err := cw.getAndPublishCityWork(context.Background())
+	is.True(err != nil)
+}
+
+func testSetup(t *testing.T, statusCode int, body string) (*is.I, CityWorkSvc) {
+	is := is.New(t)
+	s := setupMockServiceThatReturns(statusCode, body)
+	sdlc := sdlClient{
+		sundsvallvaxerURL: s.URL,
+	}
+	ctxBroker := &domain.ContextBrokerClientMock{
+		AddEntityFunc: func(ctx context.Context, entity interface{}) error {
+			return nil
+		},
+	}
+	cw := NewCityWorkService(*&zerolog.Logger{}, &sdlc, ctxBroker)
+
+	return is, cw
+}
+
+func setupMockServiceThatReturns(statusCode int, body string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(statusCode)
+		w.Write([]byte(body))
+	}))
 }
 
 func toModel(resp []byte) (*sdlResponse, error) {
@@ -46,11 +103,6 @@ func toModel(resp []byte) (*sdlResponse, error) {
 	}
 
 	return &m, nil
-}
-
-func testSetup(t *testing.T) *is.I {
-	is := is.New(t)
-	return is
 }
 
 const simple string = `
