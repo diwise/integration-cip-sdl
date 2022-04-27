@@ -62,9 +62,9 @@ func (g *sdlGeometry) AsPoint() (float64, float64, error) {
 			if err != nil {
 				return 0, 0, err
 			}
-			
+
 			x, y := convertSWEREFtoWGS84(p[1], p[0])
-			
+
 			return x, y, nil
 		}
 	}
