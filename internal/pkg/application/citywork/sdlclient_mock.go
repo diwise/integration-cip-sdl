@@ -18,7 +18,7 @@ var _ SdlClient = &SdlClientMock{}
 //
 // 		// make and configure a mocked SdlClient
 // 		mockedSdlClient := &SdlClientMock{
-// 			GetFunc: func(cxt context.Context) ([]byte, error) {
+// 			GetFunc: func(cxt context.Context) (*sdlResponse, error) {
 // 				panic("mock out the Get method")
 // 			},
 // 		}
@@ -29,7 +29,7 @@ var _ SdlClient = &SdlClientMock{}
 // 	}
 type SdlClientMock struct {
 	// GetFunc mocks the Get method.
-	GetFunc func(cxt context.Context) ([]byte, error)
+	GetFunc func(cxt context.Context) (*sdlResponse, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -43,7 +43,7 @@ type SdlClientMock struct {
 }
 
 // Get calls GetFunc.
-func (mock *SdlClientMock) Get(cxt context.Context) ([]byte, error) {
+func (mock *SdlClientMock) Get(cxt context.Context) (*sdlResponse, error) {
 	if mock.GetFunc == nil {
 		panic("SdlClientMock.GetFunc: method is nil but SdlClient.Get was just called")
 	}

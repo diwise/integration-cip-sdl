@@ -76,12 +76,14 @@ func testSetup(t *testing.T, statusCode int, body string) (*is.I, CityWorkSvc) {
 	sdlc := sdlClient{
 		sundsvallvaxerURL: s.URL,
 	}
+    
 	ctxBroker := &domain.ContextBrokerClientMock{
 		AddEntityFunc: func(ctx context.Context, entity interface{}) error {
 			return nil
 		},
 	}
-	cw := NewCityWorkService(*&zerolog.Logger{}, &sdlc, ctxBroker)
+
+	cw := NewCityWorkService(zerolog.Logger{}, &sdlc, ctxBroker)
 
 	return is, cw
 }

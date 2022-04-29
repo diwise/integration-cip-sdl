@@ -2,7 +2,6 @@ package citywork
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -54,14 +53,7 @@ func (cw *cw) getAndPublishCityWork(ctx context.Context) error {
 		return fmt.Errorf("failed to get city work")
 	}
 
-	var m sdlResponse
-	err = json.Unmarshal(response, &m)
-	if err != nil {
-		cw.log.Error().Err(err).Msg("failed to unmarshal model")
-		return fmt.Errorf("failed to unmarshal model")
-	}
-
-	for _, f := range m.Features {
+	for _, f := range response.Features {
 		featureID := f.ID()
 		if _, exists := previous[featureID]; exists {
 			continue

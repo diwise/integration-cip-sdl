@@ -2,6 +2,7 @@ package citywork
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,7 +18,7 @@ import (
 var sdltracer = otel.Tracer("sdl-trafficinfo-client")
 
 type SdlClient interface {
-	Get(cxt context.Context) ([]byte, error)
+	Get(cxt context.Context) (*sdlResponse, error)
 }
 
 type sdlClient struct {
@@ -30,7 +31,7 @@ func NewSdlClient(sundsvallvaxerURL string, log zerolog.Logger) SdlClient {
 	}
 }
 
-func (c *sdlClient) Get(ctx context.Context) ([]byte, error) {
+func (c *sdlClient) Get(ctx context.Context) (*sdlResponse, error) {
 	var err error
 	ctx, span := sdltracer.Start(ctx, "get-sdl-traffic-information")
 	defer func() {
@@ -72,5 +73,11 @@ func (c *sdlClient) Get(ctx context.Context) ([]byte, error) {
 
 	log.Info().Msgf("received response: %s...", string(body)[:100])
 
-	return body, err
+	var m sdlResponse
+	err = json.Unmarshal(body, &m)
+	if err != nil {		
+		return nil, fmt.Errorf("failed to unmarshal model")
+	}
+
+	return &m, err
 }
