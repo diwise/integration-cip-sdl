@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"strings"
 )
 
 type sdlResponse struct {
@@ -23,12 +22,13 @@ type sdlFeature struct {
 	Type       string      `json:"type"`
 	Geometry   sdlGeometry `json:"geometry"`
 	Properties struct {
+		Id           int    `json:"disruptionID"`
 		Title        string `json:"title"`
 		Description  string `json:"description"`
 		Restrictions string `json:"restrictions"`
 		Level        string `json:"level"`
-		Start        string `json:"start"`
-		End          string `json:"end"`
+		Start        string `json:"disruptionStart"`
+		End          string `json:"disruptionEnd"`
 	} `json:"properties"`
 }
 
@@ -37,10 +37,8 @@ type sdlGeometry struct {
 	Geometries json.RawMessage `json:"geometries"`
 }
 
-func (sf *sdlFeature) ID() string {
-	long, lat, _ := sf.Geometry.AsPoint()
-	id := fmt.Sprintf("%b:%b:%s:%s", long, lat, sf.Properties.Start, sf.Properties.End)
-	id = strings.ReplaceAll(strings.ReplaceAll(id, "-", ""), ".", "")
+func (sf *sdlFeature) ID() string {	
+	id := fmt.Sprintf("%d", sf.Properties.Id)	
 	return id
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/diwise/integration-cip-sdl/internal/domain"
@@ -83,9 +84,12 @@ func (cw *cw) getAndPublishCityWork(ctx context.Context) error {
 func toCityWorkModel(sf sdlFeature) fiware.CityWork {
 	long, lat, _ := sf.Geometry.AsPoint()
 
+	startDate := strings.ReplaceAll(sf.Properties.Start, "Z", "") + "T00:00:00Z"
+	endDate := strings.ReplaceAll(sf.Properties.End, "Z", "") + "T23:59:59Z"
+
 	cw := fiware.NewCityWork(sf.ID())
-	cw.StartDate = *ngsitypes.CreateDateTimeProperty(sf.Properties.Start + "T00:00:00Z")
-	cw.EndDate = *ngsitypes.CreateDateTimeProperty(sf.Properties.End + "T23:59:59Z")
+	cw.StartDate = *ngsitypes.CreateDateTimeProperty(startDate)
+	cw.EndDate = *ngsitypes.CreateDateTimeProperty(endDate)
 	cw.Location = geojson.CreateGeoJSONPropertyFromWGS84(long, lat)
 	cw.DateCreated = *ngsitypes.CreateDateTimeProperty(time.Now().UTC().Format(time.RFC3339))
 	cw.Description = ngsitypes.NewTextProperty(sf.Properties.Description)
