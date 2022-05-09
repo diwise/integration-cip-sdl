@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/diwise/integration-cip-sdl/internal/domain"
-	"github.com/diwise/integration-cip-sdl/internal/pkg/fiware"
+	"github.com/diwise/integration-cip-sdl/internal/domain"	
 	geojson "github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/geojson"
-	ngsitypes "github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/types"
+	types "github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/types"
+	fiware "github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
 	"github.com/rs/zerolog"
 )
 
@@ -80,11 +80,11 @@ func toCityWorkModel(sf sdlFeature) fiware.CityWork {
 	endDate := strings.ReplaceAll(sf.Properties.End, "Z", "") + "T23:59:59Z"
 
 	cw := fiware.NewCityWork(sf.ID())
-	cw.StartDate = *ngsitypes.CreateDateTimeProperty(startDate)
-	cw.EndDate = *ngsitypes.CreateDateTimeProperty(endDate)
+	cw.StartDate = *types.CreateDateTimeProperty(startDate)
+	cw.EndDate = *types.CreateDateTimeProperty(endDate)
 	cw.Location = geojson.CreateGeoJSONPropertyFromWGS84(long, lat)
-	cw.DateCreated = *ngsitypes.CreateDateTimeProperty(time.Now().UTC().Format(time.RFC3339))
-	cw.Description = ngsitypes.NewTextProperty(sf.Properties.Description)
+	cw.DateCreated = *types.CreateDateTimeProperty(time.Now().UTC().Format(time.RFC3339))
+	cw.Description = types.NewTextProperty(sf.Properties.Description)
 
 	return cw
 }
