@@ -74,6 +74,10 @@ func (c *contextBrokerClient) AddEntity(ctx context.Context, entity interface{})
 	}
 
 	if resp.StatusCode != http.StatusCreated {
+		if resp.StatusCode == http.StatusConflict {
+			c.log.Info().Msgf("conflict, entity allready exists")
+			return nil
+		}
 		c.log.Error().Msgf("request failed with status code %d, expected 201 (created)", resp.StatusCode)
 		return fmt.Errorf("request failed, unable to store entity")
 	}

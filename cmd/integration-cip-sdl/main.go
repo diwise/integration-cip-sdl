@@ -4,34 +4,28 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"runtime/debug"
 	"strings"
 	"time"
 
 	"github.com/diwise/integration-cip-sdl/internal/domain"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/application/citywork"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
+	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
+	"github.com/diwise/service-chassis/pkg/infrastructure/env"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/rs/zerolog"
 )
 
 func main() {
-	serviceVersion := version()
+	serviceVersion := buildinfo.SourceVersion()
 	serviceName := "integration-cip-sdl"
 
-	ctx, logger := logging.NewLogger(context.Background(), serviceName, serviceVersion)
-	logger.Info().Msg("starting up ...")
-
-	cleanup, err := tracing.Init(ctx, logger, serviceName, serviceVersion)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to init tracing")
-	}
+	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
 	defer cleanup()
 
-	contextBrokerURL := getEnvironmentVariableOrDie(logger, "CONTEXT_BROKER_URL", "Context Broker URL")
+	contextBrokerURL := env.GetVariableOrDie(logger, "CONTEXT_BROKER_URL", "Context Broker URL")
 
 	if featureIsEnabled(logger, "citywork") {
-		sundsvallvaxerURL := getEnvironmentVariableOrDie(logger, "SDL_KARTA_URL", "Sundsvall växer URL")
+		sundsvallvaxerURL := env.GetVariableOrDie(logger, "SDL_KARTA_URL", "Sundsvall växer URL")
 		cw := SetupCityWorkService(logger, sundsvallvaxerURL, contextBrokerURL)
 		go cw.Start(ctx)
 	}
@@ -61,32 +55,4 @@ func SetupCityWorkService(log zerolog.Logger, sundsvallvaxerURL string, contextB
 	b := domain.NewContextBrokerClient(contextBrokerUrl, log)
 
 	return citywork.NewCityWorkService(log, c, b)
-}
-
-func version() string {
-	buildInfo, ok := debug.ReadBuildInfo()
-	if !ok {
-		return "unknown"
-	}
-
-	buildSettings := buildInfo.Settings
-	infoMap := map[string]string{}
-	for _, s := range buildSettings {
-		infoMap[s.Key] = s.Value
-	}
-
-	sha := infoMap["vcs.revision"]
-	if infoMap["vcs.modified"] == "true" {
-		sha += "+"
-	}
-
-	return sha
-}
-
-func getEnvironmentVariableOrDie(log zerolog.Logger, envVar, description string) string {
-	value := os.Getenv(envVar)
-	if value == "" {
-		log.Fatal().Msgf("Please set %s to a valid %s.", envVar, description)
-	}
-	return value
 }
