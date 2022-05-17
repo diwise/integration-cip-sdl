@@ -14,16 +14,17 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/diwise/integration-cip-sdl/internal/domain"
+	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/diwise"
 )
 
 //Datastore is an interface that abstracts away the database implementation
 type Datastore interface {
 	SetTrailOpenStatus(trailID string, isOpen bool) error
-	UpdateTrailLastPreparationTime(trailID string, dateLastPreparation time.Time) error
+	UpdateTrailLastPreparationTime(trailID string, dateLastPreparation time.Time) (*diwise.ExerciseTrail, error)
 }
 
 //NewDatabaseConnection does not open a new connection ...
-func NewDatabaseConnection(sourceURL, apiKey string, logger zerolog.Logger, ctxClient domain.ContextBrokerClient, ctx context.Context) (Datastore, error) {
+func NewDatabaseConnection(sourceURL, apiKey string, logger zerolog.Logger) (Datastore, error) {
 	if sourceURL == "" || apiKey == "" {
 		return nil, fmt.Errorf("all environment variables must be set")
 	}
@@ -182,18 +183,34 @@ func (db *myDB) SetTrailOpenStatus(trailID string, isOpen bool) error {
 	return errors.New("not found")
 }
 
-func (db *myDB) UpdateTrailLastPreparationTime(trailID string, dateLastPreparation time.Time) error {
+func (db *myDB) UpdateTrailLastPreparationTime(trailID string, dateLastPreparation time.Time) (*diwise.ExerciseTrail, error) {
 	for idx, trail := range db.trails {
 		if strings.Compare(trail.ID, trailID) == 0 {
 			if trail.DateLastPrepared.After(dateLastPreparation) {
-				return fmt.Errorf("last preparation date may not move backwards")
+				return nil, fmt.Errorf("last preparation date may not move backwards")
 			}
 
 			db.trails[idx].DateLastPrepared = dateLastPreparation
 
-			return nil
+			fiwareTrail, err := convertToFiware(db.trails[idx])
+			if err != nil {
+				return nil, err
+			}
+
+			return fiwareTrail, nil
 		}
 	}
 
-	return errors.New("not found")
+	return nil, errors.New("not found")
+}
+
+func convertToFiware(trail domain.ExerciseTrail) (*diwise.ExerciseTrail, error) {
+	fiwareTrail := diwise.ExerciseTrail{}
+
+	fiwareTrail.ID = trail.ID
+	if trail.AreaServed != "" {
+		fiwareTrail.AreaServed = fiwareTrail.AreaServed
+	}
+
+	return nil, nil
 }

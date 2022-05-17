@@ -197,9 +197,6 @@ var seeAlsoRefs map[int64]extraInfo = map[int64]extraInfo{
 
 type myDB struct {
 	beaches []domain.Beach
-
-	ctxClient domain.ContextBrokerClient
-	ctx       context.Context
 }
 
 func (db *myDB) UpdateWaterTemperatureFromDeviceID(device string, temp float64, observedAt time.Time) (string, error) {

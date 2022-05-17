@@ -1,4 +1,4 @@
-package trailstatus
+package facilities
 
 import (
 	"context"
@@ -12,25 +12,27 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-var sdltracer = otel.Tracer("sdl-trafficinfo-client")
+var sdltracer = otel.Tracer("facilities-client")
 
-type SdlClient interface {
+type Client interface {
 	Get(cxt context.Context) ([]byte, error)
 }
 
-type sdlClient struct {
-	preparationStatusUrl string
+type client struct {
+	apiKey    string
+	sourceURL string
 }
 
-func NewSdlClient(preparationStatusUrl string, log zerolog.Logger) SdlClient {
-	return &sdlClient{
-		preparationStatusUrl: preparationStatusUrl,
+func NewFacilitiesClient(apikey, sourceURL string, log zerolog.Logger) Client {
+	return &client{
+		apiKey:    apikey,
+		sourceURL: sourceURL,
 	}
 }
 
-func (s *sdlClient) Get(ctx context.Context) ([]byte, error) {
+func (c *client) Get(ctx context.Context) ([]byte, error) {
 	var err error
-	ctx, span := sdltracer.Start(ctx, "get-sdl-traffic-information")
+	ctx, span := sdltracer.Start(ctx, "get-facilities-information")
 	defer func() {
 		if err != nil {
 			span.RecordError(err)
@@ -44,19 +46,21 @@ func (s *sdlClient) Get(ctx context.Context) ([]byte, error) {
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
-	apiReq, err := http.NewRequestWithContext(ctx, http.MethodGet, s.preparationStatusUrl, nil)
+	apiReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.sourceURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	apiReq.Header.Set("apikey", c.apiKey)
+
 	apiResponse, err := httpClient.Do(apiReq)
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to retrieve traffic information")
+		log.Error().Err(err).Msgf("failed to retrieve facilities information")
 		return nil, err
 	}
 
 	if apiResponse.StatusCode != http.StatusOK {
-		log.Error().Msgf("failed to retrieve traffic information, expected status code %d, but got %d", http.StatusOK, apiResponse.StatusCode)
+		log.Error().Msgf("failed to retrieve facilities information, expected status code %d, but got %d", http.StatusOK, apiResponse.StatusCode)
 		return nil, fmt.Errorf("expected status code %d, but got %d", http.StatusOK, apiResponse.StatusCode)
 	}
 

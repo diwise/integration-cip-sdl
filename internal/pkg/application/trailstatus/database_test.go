@@ -1,7 +1,6 @@
 package trailstatus
 
 import (
-	"context"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -97,14 +96,14 @@ func TestDataLoad(t *testing.T) {
 	url := mockServer.URL
 	is := is.New(t)
 
-	_, err := NewDatabaseConnection(url, "apikey", log.With().Logger(), &domain.ContextBrokerClientMock{}, context.Background())
+	_, err := NewDatabaseConnection(url, "apikey", log.With().Logger())
 	is.NoErr(err) // new database failure
 }
 
 func TestThatNewDatabaseConnectionFailsOnEmptyApikey(t *testing.T) {
 	is := is.New(t)
 
-	_, err := NewDatabaseConnection("", "", log.With().Logger(), &domain.ContextBrokerClientMock{}, context.Background())
+	_, err := NewDatabaseConnection("", "", log.With().Logger())
 
 	is.True(err != nil) // NewDatabaseConnection should fail if apikey is left empty.
 }
@@ -116,12 +115,12 @@ func TestUpdateLastPreparationTimeForTrail(t *testing.T) {
 
 	log.Logger = log.Output(ioutil.Discard)
 
-	db, err := NewDatabaseConnection(url, "apikey", log.With().Logger(), &domain.ContextBrokerClientMock{}, context.Background())
+	db, err := NewDatabaseConnection(url, "apikey", log.With().Logger())
 	is.NoErr(err)
 
 	trailID := domain.SundsvallAnlaggningPrefix + "703"
 	updateTime := time.Now().UTC()
-	err = db.UpdateTrailLastPreparationTime(trailID, updateTime)
+	_, err = db.UpdateTrailLastPreparationTime(trailID, updateTime)
 	is.NoErr(err)
 }
 
