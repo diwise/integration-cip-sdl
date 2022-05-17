@@ -1,68 +1,24 @@
-package database
+package beaches
 
 import (
+	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/rs/zerolog"
-
 	"github.com/diwise/integration-cip-sdl/internal/domain"
+	"github.com/rs/zerolog"
 )
-
-const (
-	SundsvallAnlaggningPrefix string = "se:sundsvall:facilities:"
-)
-
-type FeatureGeom struct {
-	Type        string          `json:"type"`
-	Coordinates json.RawMessage `json:"coordinates"`
-}
-
-type FeaturePropField struct {
-	ID    int64           `json:"id"`
-	Value json.RawMessage `json:"value"`
-}
-
-type FeatureProps struct {
-	Name      string          `json:"name"`
-	Type      string          `json:"type"`
-	Published bool            `json:"published"`
-	Fields    json.RawMessage `json:"fields"`
-	Created   *string         `json:"created,omitempty"`
-	Updated   *string         `json:"updated,omitempty"`
-}
-
-type Feature struct {
-	ID         int64        `json:"id"`
-	Properties FeatureProps `json:"properties"`
-	Geometry   FeatureGeom  `json:"geometry"`
-}
-
-type FeatureCollection struct {
-	Type     string    `json:"type"`
-	Features []Feature `json:"features"`
-}
 
 //Datastore is an interface that abstracts away the database implementation
 type Datastore interface {
-	GetAllBeaches() ([]domain.Beach, error)
-	GetBeachFromID(id string) (*domain.Beach, error)
 	UpdateWaterTemperatureFromDeviceID(device string, temp float64, observedAt time.Time) (string, error)
-
-	GetAllTrails() ([]domain.ExerciseTrail, error)
-	GetTrailFromID(id string) (*domain.ExerciseTrail, error)
-	SetTrailOpenStatus(trailID string, isOpen bool) error
-	UpdateTrailLastPreparationTime(trailID string, dateLastPreparation time.Time) error
 }
 
 //NewDatabaseConnection does not open a new connection ...
-func NewDatabaseConnection(sourceURL, apiKey string, logger zerolog.Logger) (Datastore, error) {
+func NewDatabaseConnection(sourceURL, apiKey string, logger zerolog.Logger, ctxClient domain.ContextBrokerClient, ctx context.Context) (Datastore, error) {
 	if sourceURL == "" || apiKey == "" {
 		return nil, fmt.Errorf("all environment variables must be set")
 	}
@@ -87,7 +43,7 @@ func NewDatabaseConnection(sourceURL, apiKey string, logger zerolog.Logger) (Dat
 		return nil, fmt.Errorf("loading data from %s failed with status %d", sourceURL, resp.StatusCode)
 	}
 
-	featureCollection := &FeatureCollection{}
+	featureCollection := &domain.FeatureCollection{}
 	body, _ := io.ReadAll(resp.Body)
 	err = json.Unmarshal(body, featureCollection)
 
@@ -107,16 +63,6 @@ func NewDatabaseConnection(sourceURL, apiKey string, logger zerolog.Logger) (Dat
 				}
 
 				db.beaches = append(db.beaches, *beach)
-			} else if feature.Properties.Type == "Motionsspår" || feature.Properties.Type == "Skidspår" || feature.Properties.Type == "Långfärdsskridskoled" {
-				exerciseTrail, err := parsePublishedExerciseTrail(logger, feature)
-				if err != nil {
-					logger.Error().Err(err).Msg("failed to parse motionsspår")
-					continue
-				}
-
-				exerciseTrail.Source = fmt.Sprintf("%s/get/%d", sourceURL, feature.ID)
-
-				db.trails = append(db.trails, *exerciseTrail)
 			}
 		}
 	}
@@ -124,11 +70,11 @@ func NewDatabaseConnection(sourceURL, apiKey string, logger zerolog.Logger) (Dat
 	return db, nil
 }
 
-func parsePublishedBeach(log zerolog.Logger, feature Feature) (*domain.Beach, error) {
+func parsePublishedBeach(log zerolog.Logger, feature domain.Feature) (*domain.Beach, error) {
 	log.Info().Msgf("found published beach %d %s\n", feature.ID, feature.Properties.Name)
 
 	beach := &domain.Beach{
-		ID:          fmt.Sprintf("%s%d", SundsvallAnlaggningPrefix, feature.ID),
+		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
 		Name:        feature.Properties.Name,
 		Description: "",
 	}
@@ -154,7 +100,7 @@ func parsePublishedBeach(log zerolog.Logger, feature Feature) (*domain.Beach, er
 		return nil, fmt.Errorf("failed to unmarshal geometry %s: %s", string(feature.Geometry.Coordinates), err.Error())
 	}
 
-	fields := []FeaturePropField{}
+	fields := []domain.FeaturePropField{}
 	err = json.Unmarshal(feature.Properties.Fields, &fields)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal property fields %s: %s", string(feature.Properties.Fields), err.Error())
@@ -181,87 +127,6 @@ func parsePublishedBeach(log zerolog.Logger, feature Feature) (*domain.Beach, er
 	}
 
 	return beach, nil
-}
-
-func parsePublishedExerciseTrail(log zerolog.Logger, feature Feature) (*domain.ExerciseTrail, error) {
-	log.Info().Msgf("found published exercise trail %d %s\n", feature.ID, feature.Properties.Name)
-
-	trail := &domain.ExerciseTrail{
-		ID:          fmt.Sprintf("%s%d", SundsvallAnlaggningPrefix, feature.ID),
-		Name:        feature.Properties.Name,
-		Description: "",
-	}
-
-	var timeFormat string = "2006-01-02 15:04:05"
-
-	if feature.Properties.Created != nil {
-		created, err := time.Parse(timeFormat, *feature.Properties.Created)
-		if err == nil {
-			trail.DateCreated = created.UTC()
-		}
-	}
-
-	if feature.Properties.Updated != nil {
-		modified, err := time.Parse(timeFormat, *feature.Properties.Updated)
-		if err == nil {
-			trail.DateModified = modified.UTC()
-		}
-	}
-
-	err := json.Unmarshal(feature.Geometry.Coordinates, &trail.Geometry.Lines)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal geometry %s: %s", string(feature.Geometry.Coordinates), err.Error())
-	}
-
-	fields := []FeaturePropField{}
-	err = json.Unmarshal(feature.Properties.Fields, &fields)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal property fields %s: %s", string(feature.Properties.Fields), err.Error())
-	}
-
-	categories := []string{}
-
-	if feature.Properties.Type == "Långfärdsskridskoled" {
-		categories = append(categories, "ice-skating")
-	}
-
-	for _, field := range fields {
-		if field.ID == 99 {
-			length, _ := strconv.ParseInt(string(field.Value[0:len(field.Value)]), 10, 64)
-			trail.Length = float64(length) / 1000.0
-		} else if field.ID == 102 {
-			isOpen := string(field.Value[1 : len(field.Value)-1])
-			openStatus := map[string]string{"Ja": "open", "Nej": "closed"}
-			trail.Status = openStatus[isOpen]
-		} else if field.ID == 103 {
-			if propertyValueMatches(field, "Ja") {
-				categories = append(categories, "floodlit")
-			}
-		} else if field.ID == 110 {
-			trail.Description = string(field.Value[1 : len(field.Value)-1])
-		} else if field.ID == 134 {
-			trail.AreaServed = string(field.Value[1 : len(field.Value)-1])
-		} else if field.ID == 248 || field.ID == 250 {
-			if propertyValueMatches(field, "Ja") {
-				categories = append(categories, "ski-classic")
-			}
-		} else if field.ID == 249 || field.ID == 251 {
-			if propertyValueMatches(field, "Ja") {
-				categories = append(categories, "ski-skate")
-			}
-		}
-	}
-
-	if len(categories) > 0 {
-		trail.Category = categories
-	}
-
-	return trail, nil
-}
-
-func propertyValueMatches(field FeaturePropField, expectation string) bool {
-	value := string(field.Value[0:len(field.Value)])
-	return value == expectation || value == ("\""+expectation+"\"")
 }
 
 type extraInfo struct {
@@ -332,64 +197,9 @@ var seeAlsoRefs map[int64]extraInfo = map[int64]extraInfo{
 
 type myDB struct {
 	beaches []domain.Beach
-	trails  []domain.ExerciseTrail
-}
 
-func (db *myDB) GetAllBeaches() ([]domain.Beach, error) {
-	return db.beaches, nil
-}
-
-func (db *myDB) GetAllTrails() ([]domain.ExerciseTrail, error) {
-	return db.trails, nil
-}
-
-func (db *myDB) GetBeachFromID(id string) (*domain.Beach, error) {
-	for _, poi := range db.beaches {
-		if strings.Compare(poi.ID, id) == 0 {
-			return &poi, nil
-		}
-	}
-	return nil, errors.New("not found")
-}
-
-func (db *myDB) GetTrailFromID(id string) (*domain.ExerciseTrail, error) {
-	for _, trail := range db.trails {
-		if strings.Compare(trail.ID, id) == 0 {
-			return &trail, nil
-		}
-	}
-	return nil, errors.New("not found")
-}
-
-func (db *myDB) SetTrailOpenStatus(trailID string, isOpen bool) error {
-	for idx, trail := range db.trails {
-		if strings.Compare(trail.ID, trailID) == 0 {
-			status := "closed"
-			if isOpen {
-				status = "open"
-			}
-			db.trails[idx].Status = status
-			return nil
-		}
-	}
-
-	return errors.New("not found")
-}
-
-func (db *myDB) UpdateTrailLastPreparationTime(trailID string, dateLastPreparation time.Time) error {
-	for idx, trail := range db.trails {
-		if strings.Compare(trail.ID, trailID) == 0 {
-			if trail.DateLastPrepared.After(dateLastPreparation) {
-				return fmt.Errorf("last preparation date may not move backwards")
-			}
-
-			db.trails[idx].DateLastPrepared = dateLastPreparation
-
-			return nil
-		}
-	}
-
-	return errors.New("not found")
+	ctxClient domain.ContextBrokerClient
+	ctx       context.Context
 }
 
 func (db *myDB) UpdateWaterTemperatureFromDeviceID(device string, temp float64, observedAt time.Time) (string, error) {

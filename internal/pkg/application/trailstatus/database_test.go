@@ -1,6 +1,7 @@
-package database
+package trailstatus
 
 import (
+	"context"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/diwise/integration-cip-sdl/internal/domain"
 	"github.com/rs/zerolog/log"
 
 	"github.com/matryer/is"
@@ -95,30 +97,14 @@ func TestDataLoad(t *testing.T) {
 	url := mockServer.URL
 	is := is.New(t)
 
-	db, err := NewDatabaseConnection(url, "apikey", log.With().Logger())
+	_, err := NewDatabaseConnection(url, "apikey", log.With().Logger(), &domain.ContextBrokerClientMock{}, context.Background())
 	is.NoErr(err) // new database failure
-
-	_, err = db.GetBeachFromID(SundsvallAnlaggningPrefix + "1545")
-	is.NoErr(err) // should be able to find entity in database
-
-	allBeaches, err := db.GetAllBeaches()
-	is.NoErr(err) // failed to query all beaches
-
-	is.Equal(len(allBeaches), 1) // expected 1 published beach
-
-	_, err = db.GetTrailFromID(SundsvallAnlaggningPrefix + "703")
-	is.NoErr(err) // should be able to find entity in database
-
-	allTrails, err := db.GetAllTrails()
-	is.NoErr(err) // failed to query all trails
-
-	is.Equal(len(allTrails), 2) // expected 2 published trails
 }
 
 func TestThatNewDatabaseConnectionFailsOnEmptyApikey(t *testing.T) {
 	is := is.New(t)
 
-	_, err := NewDatabaseConnection("", "", log.With().Logger())
+	_, err := NewDatabaseConnection("", "", log.With().Logger(), &domain.ContextBrokerClientMock{}, context.Background())
 
 	is.True(err != nil) // NewDatabaseConnection should fail if apikey is left empty.
 }
@@ -130,17 +116,13 @@ func TestUpdateLastPreparationTimeForTrail(t *testing.T) {
 
 	log.Logger = log.Output(ioutil.Discard)
 
-	db, err := NewDatabaseConnection(url, "apikey", log.With().Logger())
+	db, err := NewDatabaseConnection(url, "apikey", log.With().Logger(), &domain.ContextBrokerClientMock{}, context.Background())
 	is.NoErr(err)
 
-	trailID := SundsvallAnlaggningPrefix + "703"
+	trailID := domain.SundsvallAnlaggningPrefix + "703"
 	updateTime := time.Now().UTC()
 	err = db.UpdateTrailLastPreparationTime(trailID, updateTime)
 	is.NoErr(err)
-
-	trail, err := db.GetTrailFromID(trailID)
-	is.NoErr(err)
-	is.Equal(trail.DateLastPrepared, updateTime)
 }
 
 func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server {

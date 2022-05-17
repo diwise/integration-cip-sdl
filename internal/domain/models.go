@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type LineString struct {
 	Lines [][]float64
@@ -24,6 +27,7 @@ type Beach struct {
 	DateModified     time.Time
 }
 
+//ExerciseTrail contains a point of interest of type ExerciseTrail
 type ExerciseTrail struct {
 	ID               string
 	Name             string
@@ -37,4 +41,40 @@ type ExerciseTrail struct {
 	DateModified     time.Time
 	DateLastPrepared time.Time
 	Source           string
+}
+
+// ---
+
+const (
+	SundsvallAnlaggningPrefix string = "se:sundsvall:facilities:"
+)
+
+type FeatureGeom struct {
+	Type        string          `json:"type"`
+	Coordinates json.RawMessage `json:"coordinates"`
+}
+
+type FeaturePropField struct {
+	ID    int64           `json:"id"`
+	Value json.RawMessage `json:"value"`
+}
+
+type FeatureProps struct {
+	Name      string          `json:"name"`
+	Type      string          `json:"type"`
+	Published bool            `json:"published"`
+	Fields    json.RawMessage `json:"fields"`
+	Created   *string         `json:"created,omitempty"`
+	Updated   *string         `json:"updated,omitempty"`
+}
+
+type Feature struct {
+	ID         int64        `json:"id"`
+	Properties FeatureProps `json:"properties"`
+	Geometry   FeatureGeom  `json:"geometry"`
+}
+
+type FeatureCollection struct {
+	Type     string    `json:"type"`
+	Features []Feature `json:"features"`
 }

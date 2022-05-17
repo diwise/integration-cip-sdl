@@ -1,67 +1,47 @@
 package trailstatus
 
 import (
+	"context"
 	"encoding/json"
-	"io"
-	"net/http"
 	"time"
 
-	"github.com/diwise/integration-cip-sdl/internal/pkg/infrastructure/repositories/database"
+	"github.com/diwise/integration-cip-sdl/internal/domain"
 	"github.com/rs/zerolog"
 )
 
 type TrailPreparationService interface {
+	Start(ctx context.Context)
 	Shutdown()
 }
 
-func NewTrailPreparationService(zlog zerolog.Logger, url string, db database.Datastore) TrailPreparationService {
+func NewTrailPreparationService(zlog zerolog.Logger, sc sdlClient, db Datastore) TrailPreparationService {
 	ts := &trailServiceImpl{
 		keepRunning: true,
-		url:         url,
+		sc:          sc,
 		db:          db,
 		log:         zlog,
 	}
-
-	go ts.run()
 
 	return ts
 }
 
 type trailServiceImpl struct {
 	keepRunning bool
-	url         string
-	db          database.Datastore
+	sc          sdlClient
+	db          Datastore
 	log         zerolog.Logger
 }
 
-func (ts *trailServiceImpl) run() {
-	ts.updateTrailStatusFromSource()
+func (ts *trailServiceImpl) Start(ctx context.Context) {
+	ts.updateTrailStatusFromSource(ctx)
 
 	for ts.keepRunning {
 		time.Sleep(60 * time.Second)
-		ts.updateTrailStatusFromSource()
+		ts.updateTrailStatusFromSource(ctx)
 	}
 }
 
-func (ts *trailServiceImpl) updateTrailStatusFromSource() {
-	req, err := http.NewRequest("GET", ts.url, nil)
-	if err != nil {
-		ts.log.Error().Err(err).Msg("failed to create http request")
-		return
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		ts.log.Error().Err(err).Msg("failed to request trail status update")
-		return
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		ts.log.Error().Msgf("loading data from %s failed with status %d", ts.url, resp.StatusCode)
-		return
-	}
+func (ts *trailServiceImpl) updateTrailStatusFromSource(ctx context.Context) error {
 
 	status := struct {
 		Ski map[string]struct {
@@ -71,12 +51,16 @@ func (ts *trailServiceImpl) updateTrailStatusFromSource() {
 		} `json:"Ski"`
 	}{}
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := ts.sc.Get(ctx)
+	if err != nil {
+		return err
+	}
+
 	_ = json.Unmarshal(body, &status)
 
 	for k, v := range status.Ski {
 		if v.ExternalID != "" {
-			trailID := database.SundsvallAnlaggningPrefix + v.ExternalID
+			trailID := domain.SundsvallAnlaggningPrefix + v.ExternalID
 
 			ts.db.SetTrailOpenStatus(trailID, v.Active)
 
@@ -90,10 +74,13 @@ func (ts *trailServiceImpl) updateTrailStatusFromSource() {
 				err = ts.db.UpdateTrailLastPreparationTime(trailID, lastPrepared)
 				if err != nil {
 					ts.log.Error().Err(err).Msgf("failed to update trail status for %s", k)
+					continue
 				}
 			}
 		}
 	}
+
+	return nil
 }
 
 func (ts *trailServiceImpl) Shutdown() {
