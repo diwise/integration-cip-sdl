@@ -15,18 +15,20 @@ import (
 var sdltracer = otel.Tracer("facilities-client")
 
 type Client interface {
-	Get(cxt context.Context) ([]byte, error)
+	Get(ctx context.Context) ([]byte, error)
 }
 
 type client struct {
-	apiKey    string
-	sourceURL string
+	apiKey        string
+	sourceURL     string
+	prepStatusURL string
 }
 
-func NewFacilitiesClient(apikey, sourceURL string, log zerolog.Logger) Client {
+func NewFacilitiesClient(apikey, sourceURL, prepStatusURL string, log zerolog.Logger) Client {
 	return &client{
-		apiKey:    apikey,
-		sourceURL: sourceURL,
+		apiKey:        apikey,
+		sourceURL:     sourceURL,
+		prepStatusURL: prepStatusURL,
 	}
 }
 
@@ -46,7 +48,7 @@ func (c *client) Get(ctx context.Context) ([]byte, error) {
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
-	apiReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.sourceURL, nil)
+	apiReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.sourceURL+"/list", nil)
 	if err != nil {
 		return nil, err
 	}

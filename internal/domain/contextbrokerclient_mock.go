@@ -21,6 +21,9 @@ var _ ContextBrokerClient = &ContextBrokerClientMock{}
 // 			AddEntityFunc: func(ctx context.Context, entity interface{}) error {
 // 				panic("mock out the AddEntity method")
 // 			},
+// 			UpdateEntityFunc: func(ctx context.Context, entity interface{}, entityID string) error {
+// 				panic("mock out the UpdateEntity method")
+// 			},
 // 		}
 //
 // 		// use mockedContextBrokerClient in code that requires ContextBrokerClient
@@ -31,6 +34,9 @@ type ContextBrokerClientMock struct {
 	// AddEntityFunc mocks the AddEntity method.
 	AddEntityFunc func(ctx context.Context, entity interface{}) error
 
+	// UpdateEntityFunc mocks the UpdateEntity method.
+	UpdateEntityFunc func(ctx context.Context, entity interface{}, entityID string) error
+
 	// calls tracks calls to the methods.
 	calls struct {
 		// AddEntity holds details about calls to the AddEntity method.
@@ -40,8 +46,18 @@ type ContextBrokerClientMock struct {
 			// Entity is the entity argument value.
 			Entity interface{}
 		}
+		// UpdateEntity holds details about calls to the UpdateEntity method.
+		UpdateEntity []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Entity is the entity argument value.
+			Entity interface{}
+			// EntityID is the entityID argument value.
+			EntityID string
+		}
 	}
-	lockAddEntity sync.RWMutex
+	lockAddEntity    sync.RWMutex
+	lockUpdateEntity sync.RWMutex
 }
 
 // AddEntity calls AddEntityFunc.
@@ -76,5 +92,44 @@ func (mock *ContextBrokerClientMock) AddEntityCalls() []struct {
 	mock.lockAddEntity.RLock()
 	calls = mock.calls.AddEntity
 	mock.lockAddEntity.RUnlock()
+	return calls
+}
+
+// UpdateEntity calls UpdateEntityFunc.
+func (mock *ContextBrokerClientMock) UpdateEntity(ctx context.Context, entity interface{}, entityID string) error {
+	if mock.UpdateEntityFunc == nil {
+		panic("ContextBrokerClientMock.UpdateEntityFunc: method is nil but ContextBrokerClient.UpdateEntity was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Entity   interface{}
+		EntityID string
+	}{
+		Ctx:      ctx,
+		Entity:   entity,
+		EntityID: entityID,
+	}
+	mock.lockUpdateEntity.Lock()
+	mock.calls.UpdateEntity = append(mock.calls.UpdateEntity, callInfo)
+	mock.lockUpdateEntity.Unlock()
+	return mock.UpdateEntityFunc(ctx, entity, entityID)
+}
+
+// UpdateEntityCalls gets all the calls that were made to UpdateEntity.
+// Check the length with:
+//     len(mockedContextBrokerClient.UpdateEntityCalls())
+func (mock *ContextBrokerClientMock) UpdateEntityCalls() []struct {
+	Ctx      context.Context
+	Entity   interface{}
+	EntityID string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Entity   interface{}
+		EntityID string
+	}
+	mock.lockUpdateEntity.RLock()
+	calls = mock.calls.UpdateEntity
+	mock.lockUpdateEntity.RUnlock()
 	return calls
 }

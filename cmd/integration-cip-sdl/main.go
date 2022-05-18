@@ -9,6 +9,8 @@ import (
 
 	"github.com/diwise/integration-cip-sdl/internal/domain"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/application/citywork"
+	facilities "github.com/diwise/integration-cip-sdl/internal/pkg/application/facilitiesclient"
+	"github.com/diwise/integration-cip-sdl/internal/pkg/application/trailstatus"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -25,10 +27,19 @@ func main() {
 	defer cleanup()
 
 	contextBrokerURL := env.GetVariableOrDie(logger, "CONTEXT_BROKER_URL", "Context Broker URL")
+	ctxBroker := domain.NewContextBrokerClient(contextBrokerURL, logger)
+
+	if featureIsEnabled(logger, "facilities") {
+		facilitiesURL := env.GetVariableOrDie(logger, "FACILITIES_URL", "Facilities URL")
+		facilitiesApiKey := env.GetVariableOrDie(logger, "FACILITIES_API_KEY", "Facilities Api Key")
+		prepStatusURL := env.GetVariableOrDie(logger, "PREPARATION_STATUS_URL", "Preparation status url")
+
+		go SetupAndRunFacilities(facilitiesURL, facilitiesApiKey, prepStatusURL, logger, ctx, ctxBroker)
+	}
 
 	if featureIsEnabled(logger, "citywork") {
 		sundsvallvaxerURL := env.GetVariableOrDie(logger, "SDL_KARTA_URL", "Sundsvall växer URL")
-		cw := SetupCityWorkService(logger, sundsvallvaxerURL, contextBrokerURL)
+		cw := SetupCityWorkService(logger, sundsvallvaxerURL, ctxBroker)
 		go cw.Start(ctx)
 	}
 
@@ -50,11 +61,10 @@ func featureIsEnabled(logger zerolog.Logger, feature string) bool {
 	return isEnabled
 }
 
-func SetupCityWorkService(log zerolog.Logger, sundsvallvaxerURL string, contextBrokerUrl string) citywork.CityWorkSvc {
+func SetupCityWorkService(log zerolog.Logger, sundsvallvaxerURL string, ctxBroker domain.ContextBrokerClient) citywork.CityWorkSvc {
 	c := citywork.NewSdlClient(sundsvallvaxerURL, log)
-	b := domain.NewContextBrokerClient(contextBrokerUrl, log)
 
-	return citywork.NewCityWorkService(log, c, b)
+	return citywork.NewCityWorkService(log, c, ctxBroker)
 }
 
 func setupRouterAndWaitForConnections(logger zerolog.Logger) {
@@ -72,5 +82,28 @@ func setupRouterAndWaitForConnections(logger zerolog.Logger) {
 	err := http.ListenAndServe(":8080", r)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to start router")
+	}
+}
+
+func SetupAndRunFacilities(url, apiKey, prepStatusURL string, logger zerolog.Logger, ctx context.Context, ctxBroker domain.ContextBrokerClient) facilities.Client {
+	fc := facilities.NewFacilitiesClient(apiKey, url, prepStatusURL, logger)
+	fcBody, err := fc.Get(ctx)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to retrieve facilities information")
+	}
+
+	//facilitiesClient will get data from anläggningsregistret once to "seed the database", even tho it's not a real db
+	//then it will poll an Update function once per minute which calls on Update From Source from TrailStatus service.
+
+	trailDB, _ := trailstatus.NewDatabaseConnection(logger, url, fcBody)
+
+	ts := trailstatus.NewTrailPreparationService(logger, trailDB, ctxBroker)
+
+	for {
+		facilitiesBody, err := fc.Get(ctx)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to retrieve facilities information")
+		}
+		ts.UpdateTrailStatusFromSource(ctx, facilitiesBody)
 	}
 }

@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +13,7 @@ import (
 
 	"github.com/diwise/integration-cip-sdl/internal/domain"
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/diwise"
+	"github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/types"
 )
 
 //Datastore is an interface that abstracts away the database implementation
@@ -24,35 +23,10 @@ type Datastore interface {
 }
 
 //NewDatabaseConnection does not open a new connection ...
-func NewDatabaseConnection(sourceURL, apiKey string, logger zerolog.Logger) (Datastore, error) {
-	if sourceURL == "" || apiKey == "" {
-		return nil, fmt.Errorf("all environment variables must be set")
-	}
-
-	logger.Info().Msgf("loading data from %s ...", sourceURL)
-
-	req, err := http.NewRequest("GET", sourceURL+"/list", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("apikey", apiKey)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("loading data from %s failed with status %d", sourceURL, resp.StatusCode)
-	}
+func NewDatabaseConnection(logger zerolog.Logger, sourceURL string, sourceBody []byte) (Datastore, error) {
 
 	featureCollection := &domain.FeatureCollection{}
-	body, _ := io.ReadAll(resp.Body)
-	err = json.Unmarshal(body, featureCollection)
-
+	err := json.Unmarshal(sourceBody, featureCollection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response from %s. (%s)", sourceURL, err.Error())
 	}
@@ -125,9 +99,8 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 			length, _ := strconv.ParseInt(string(field.Value[0:len(field.Value)]), 10, 64)
 			trail.Length = float64(length) / 1000.0
 		} else if field.ID == 102 {
-			isOpen := string(field.Value[1 : len(field.Value)-1])
 			openStatus := map[string]string{"Ja": "open", "Nej": "closed"}
-			trail.Status = openStatus[isOpen]
+			trail.Status = openStatus[string(field.Value[1:len(field.Value)-1])]
 		} else if field.ID == 103 {
 			if propertyValueMatches(field, "Ja") {
 				categories = append(categories, "floodlit")
@@ -208,8 +181,9 @@ func convertToFiware(trail domain.ExerciseTrail) (*diwise.ExerciseTrail, error) 
 	fiwareTrail := diwise.ExerciseTrail{}
 
 	fiwareTrail.ID = trail.ID
+
 	if trail.AreaServed != "" {
-		fiwareTrail.AreaServed = fiwareTrail.AreaServed
+		fiwareTrail.AreaServed = types.NewTextProperty(trail.AreaServed)
 	}
 
 	return nil, nil

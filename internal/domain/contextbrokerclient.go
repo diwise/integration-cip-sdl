@@ -19,6 +19,7 @@ var tracer = otel.Tracer("context-broker-client")
 
 type ContextBrokerClient interface {
 	AddEntity(ctx context.Context, entity interface{}) error
+	UpdateEntity(ctx context.Context, entity interface{}, entityID string) error
 }
 
 type contextBrokerClient struct {
@@ -82,5 +83,9 @@ func (c *contextBrokerClient) AddEntity(ctx context.Context, entity interface{})
 		return fmt.Errorf("request failed, unable to store entity")
 	}
 
+	return nil
+}
+
+func (c *contextBrokerClient) UpdateEntity(ctx context.Context, entity interface{}, entityID string) error {
 	return nil
 }

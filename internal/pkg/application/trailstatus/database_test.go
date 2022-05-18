@@ -1,23 +1,19 @@
 package trailstatus
 
 import (
-	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
-	"time"
-
-	"github.com/diwise/integration-cip-sdl/internal/domain"
-	"github.com/rs/zerolog/log"
-
-	"github.com/matryer/is"
 )
 
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestXxx(t *testing.T) {
+
+}
+
+/*
 var response = `{"type":"FeatureCollection","features":[
 	{"id":1545,"type":"Feature",
 	"properties":{
@@ -133,3 +129,5 @@ func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server
 		}
 	}))
 }
+
+*/
