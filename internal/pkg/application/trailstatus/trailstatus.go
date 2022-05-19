@@ -3,6 +3,8 @@ package trailstatus
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"net/http"
 	"time"
 
 	"github.com/diwise/integration-cip-sdl/internal/domain"
@@ -11,13 +13,12 @@ import (
 )
 
 type TrailPreparationService interface {
-	UpdateTrailStatusFromSource(ctx context.Context, sourceBody []byte) error
+	UpdateTrailStatusFromSource(ctx context.Context) error
 }
 
-func NewTrailPreparationService(log zerolog.Logger, db Datastore, cs domain.ContextBrokerClient) TrailPreparationService {
+func NewTrailPreparationService(log zerolog.Logger, db Datastore, cs domain.ContextBrokerClient, url string) TrailPreparationService {
 	ts := &trailServiceImpl{
-		keepRunning: true,
-
+		url: url,
 		cs:  cs,
 		db:  db,
 		log: log,
@@ -27,14 +28,32 @@ func NewTrailPreparationService(log zerolog.Logger, db Datastore, cs domain.Cont
 }
 
 type trailServiceImpl struct {
-	keepRunning bool
-
+	url string
 	cs  domain.ContextBrokerClient
 	db  Datastore
 	log zerolog.Logger
 }
 
-func (ts *trailServiceImpl) UpdateTrailStatusFromSource(ctx context.Context, sourceBody []byte) error {
+func (ts *trailServiceImpl) UpdateTrailStatusFromSource(ctx context.Context) error {
+	req, err := http.NewRequest("GET", ts.url, nil)
+	if err != nil {
+		ts.log.Error().Err(err).Msg("failed to create http request")
+		return err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		ts.log.Error().Err(err).Msg("failed to request trail status update")
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		ts.log.Error().Msgf("loading data from %s failed with status %d", ts.url, resp.StatusCode)
+		return err
+	}
+
 	status := struct {
 		Ski map[string]struct {
 			Active          bool   `json:"isActive"`
@@ -43,7 +62,8 @@ func (ts *trailServiceImpl) UpdateTrailStatusFromSource(ctx context.Context, sou
 		} `json:"Ski"`
 	}{}
 
-	err := json.Unmarshal(sourceBody, &status)
+	body, _ := io.ReadAll(resp.Body)
+	err = json.Unmarshal(body, &status)
 	if err != nil {
 		return err
 	}

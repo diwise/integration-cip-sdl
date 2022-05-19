@@ -19,16 +19,14 @@ type Client interface {
 }
 
 type client struct {
-	apiKey        string
-	sourceURL     string
-	prepStatusURL string
+	apiKey    string
+	sourceURL string
 }
 
 func NewFacilitiesClient(apikey, sourceURL, prepStatusURL string, log zerolog.Logger) Client {
 	return &client{
-		apiKey:        apikey,
-		sourceURL:     sourceURL,
-		prepStatusURL: prepStatusURL,
+		apiKey:    apikey,
+		sourceURL: sourceURL,
 	}
 }
 

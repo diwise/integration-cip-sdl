@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/diwise/integration-cip-sdl/internal/domain"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/application/citywork"
@@ -92,18 +93,14 @@ func SetupAndRunFacilities(url, apiKey, prepStatusURL string, logger zerolog.Log
 		logger.Fatal().Err(err).Msg("failed to retrieve facilities information")
 	}
 
-	//facilitiesClient will get data from anläggningsregistret once to "seed the database", even tho it's not a real db
-	//then it will poll an Update function once per minute which calls on Update From Source from TrailStatus service.
-
 	trailDB, _ := trailstatus.NewDatabaseConnection(logger, url, fcBody)
-
-	ts := trailstatus.NewTrailPreparationService(logger, trailDB, ctxBroker)
+	ts := trailstatus.NewTrailPreparationService(logger, trailDB, ctxBroker, prepStatusURL)
 
 	for {
-		facilitiesBody, err := fc.Get(ctx)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("failed to retrieve facilities information")
-		}
-		ts.UpdateTrailStatusFromSource(ctx, facilitiesBody)
+		time.Sleep(60 * time.Second)
+		ts.UpdateTrailStatusFromSource(ctx)
 	}
 }
+
+//facilitiesClient will get data from anläggningsregistret once to "seed the database", even tho it's not a real db
+//then it will poll an Update function once per minute which calls on Update From Source from TrailStatus service.
