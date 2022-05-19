@@ -13,6 +13,7 @@ import (
 
 	"github.com/diwise/integration-cip-sdl/internal/domain"
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/diwise"
+	"github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/geojson"
 	"github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/types"
 )
 
@@ -23,7 +24,7 @@ type Datastore interface {
 }
 
 //NewDatabaseConnection does not open a new connection ...
-func NewDatabaseConnection(logger zerolog.Logger, sourceURL string, sourceBody []byte) (Datastore, error) {
+func NewDatabaseConnection(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, sourceBody []byte) (Datastore, error) {
 
 	featureCollection := &domain.FeatureCollection{}
 	err := json.Unmarshal(sourceBody, featureCollection)
@@ -31,7 +32,10 @@ func NewDatabaseConnection(logger zerolog.Logger, sourceURL string, sourceBody [
 		return nil, fmt.Errorf("failed to unmarshal response from %s. (%s)", sourceURL, err.Error())
 	}
 
-	db := &myDB{}
+	db := &myDB{
+		ctxClient: ctxBrokerClient,
+		ctx:       ctx,
+	}
 
 	for _, feature := range featureCollection.Features {
 		if feature.Properties.Published {
@@ -45,6 +49,14 @@ func NewDatabaseConnection(logger zerolog.Logger, sourceURL string, sourceBody [
 				exerciseTrail.Source = fmt.Sprintf("%s/get/%d", sourceURL, feature.ID)
 
 				db.trails = append(db.trails, *exerciseTrail)
+
+				fiwareTrail := convertDBTrailToFiwareExerciseTrail(*exerciseTrail)
+
+				err = db.ctxClient.AddEntity(db.ctx, fiwareTrail)
+				if err != nil {
+					logger.Error().Err(err).Msg("failed to post exercise trail to context broker")
+					continue
+				}
 			}
 		}
 	}
@@ -165,10 +177,7 @@ func (db *myDB) UpdateTrailLastPreparationTime(trailID string, dateLastPreparati
 
 			db.trails[idx].DateLastPrepared = dateLastPreparation
 
-			fiwareTrail, err := convertToFiware(db.trails[idx])
-			if err != nil {
-				return nil, err
-			}
+			fiwareTrail := convertDBTrailToFiwareExerciseTrail(db.trails[idx])
 
 			return fiwareTrail, nil
 		}
@@ -177,14 +186,37 @@ func (db *myDB) UpdateTrailLastPreparationTime(trailID string, dateLastPreparati
 	return nil, errors.New("not found")
 }
 
-func convertToFiware(trail domain.ExerciseTrail) (*diwise.ExerciseTrail, error) {
-	fiwareTrail := diwise.ExerciseTrail{}
+func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) *diwise.ExerciseTrail {
+	location := geojson.CreateGeoJSONPropertyFromLineString(trail.Geometry.Lines)
+	exerciseTrail := diwise.NewExerciseTrail(trail.ID, trail.Name, trail.Length, trail.Description, location)
 
-	fiwareTrail.ID = trail.ID
-
-	if trail.AreaServed != "" {
-		fiwareTrail.AreaServed = types.NewTextProperty(trail.AreaServed)
+	if !trail.DateCreated.IsZero() {
+		exerciseTrail.DateCreated = types.CreateDateTimeProperty(trail.DateCreated.Format(time.RFC3339))
 	}
 
-	return nil, nil
+	if !trail.DateModified.IsZero() {
+		exerciseTrail.DateModified = types.CreateDateTimeProperty(trail.DateModified.Format(time.RFC3339))
+	}
+
+	if !trail.DateLastPrepared.IsZero() {
+		exerciseTrail.DateLastPreparation = types.CreateDateTimeProperty(trail.DateLastPrepared.Format(time.RFC3339))
+	}
+
+	if trail.AreaServed != "" {
+		exerciseTrail.AreaServed = types.NewTextProperty(trail.AreaServed)
+	}
+
+	if len(trail.Category) > 0 {
+		exerciseTrail.Category = types.NewTextListProperty(trail.Category)
+	}
+
+	if trail.Source != "" {
+		exerciseTrail.Source = types.NewTextProperty(trail.Source)
+	}
+
+	if trail.Status != "" {
+		exerciseTrail.Status = types.NewTextProperty(trail.Status)
+	}
+
+	return exerciseTrail
 }

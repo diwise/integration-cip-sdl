@@ -93,12 +93,13 @@ func SetupAndRunFacilities(url, apiKey, prepStatusURL string, logger zerolog.Log
 		logger.Fatal().Err(err).Msg("failed to retrieve facilities information")
 	}
 
-	trailDB, _ := trailstatus.NewDatabaseConnection(logger, url, fcBody)
-	ts := trailstatus.NewTrailPreparationService(logger, trailDB, ctxBroker, prepStatusURL)
-
 	for {
+		_, err = trailstatus.NewDatabaseConnection(logger, ctxBroker, ctx, url, fcBody)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to store facilities information")
+		}
+
 		time.Sleep(60 * time.Second)
-		ts.UpdateTrailStatusFromSource(ctx)
 	}
 }
 
