@@ -1,13 +1,11 @@
-package trailstatus
+package facilities
 
 import (
 	"context"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/diwise/integration-cip-sdl/internal/domain"
 	"github.com/matryer/is"
@@ -99,34 +97,16 @@ func TestDataLoad(t *testing.T) {
 	ctxServer := setupMockServiceThatReturns(http.StatusCreated, "")
 	ctxBroker := domain.NewContextBrokerClient(ctxServer.URL, zerolog.Logger{})
 
-	_, err := NewDatabaseConnection(log.With().Logger(), ctxBroker, context.Background(), url, []byte(response))
+	_, err := StoreTrailsFromSource(log.With().Logger(), ctxBroker, context.Background(), url, []byte(response))
 	is.NoErr(err) // new database failure
 }
 
 func TestThatNewDatabaseConnectionFailsOnEmptyApikey(t *testing.T) {
 	is := is.New(t)
 
-	_, err := NewDatabaseConnection(log.With().Logger(), nil, context.Background(), "", nil)
+	_, err := StoreTrailsFromSource(log.With().Logger(), nil, context.Background(), "", nil)
 
 	is.True(err != nil) // NewDatabaseConnection should fail if apikey is left empty.
-}
-
-func TestUpdateLastPreparationTimeForTrail(t *testing.T) {
-	mockServer := setupMockServiceThatReturns(200, response)
-	url := mockServer.URL
-	is := is.New(t)
-	ctxServer := setupMockServiceThatReturns(http.StatusCreated, "")
-	ctxBroker := domain.NewContextBrokerClient(ctxServer.URL, zerolog.Logger{})
-
-	log.Logger = log.Output(ioutil.Discard)
-
-	db, err := NewDatabaseConnection(log.With().Logger(), ctxBroker, context.Background(), url, []byte(response))
-	is.NoErr(err)
-
-	trailID := domain.SundsvallAnlaggningPrefix + "703"
-	updateTime := time.Now().UTC()
-	_, err = db.UpdateTrailLastPreparationTime(trailID, updateTime)
-	is.NoErr(err)
 }
 
 func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server {

@@ -10,8 +10,7 @@ import (
 
 	"github.com/diwise/integration-cip-sdl/internal/domain"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/application/citywork"
-	facilities "github.com/diwise/integration-cip-sdl/internal/pkg/application/facilitiesclient"
-	"github.com/diwise/integration-cip-sdl/internal/pkg/application/trailstatus"
+	"github.com/diwise/integration-cip-sdl/internal/pkg/application/facilities"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -94,7 +93,7 @@ func SetupAndRunFacilities(url, apiKey, prepStatusURL string, logger zerolog.Log
 	}
 
 	for {
-		_, err = trailstatus.NewDatabaseConnection(logger, ctxBroker, ctx, url, fcBody)
+		_, err = facilities.StoreTrailsFromSource(logger, ctxBroker, ctx, url, fcBody)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("failed to store facilities information")
 		}
@@ -102,6 +101,3 @@ func SetupAndRunFacilities(url, apiKey, prepStatusURL string, logger zerolog.Log
 		time.Sleep(60 * time.Second)
 	}
 }
-
-//facilitiesClient will get data from anläggningsregistret once to "seed the database", even tho it's not a real db
-//then it will poll an Update function once per minute which calls on Update From Source from TrailStatus service.

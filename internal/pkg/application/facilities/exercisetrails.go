@@ -1,12 +1,10 @@
-package trailstatus
+package facilities
 
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -18,13 +16,10 @@ import (
 )
 
 //Datastore is an interface that abstracts away the database implementation
-type Datastore interface {
-	SetTrailOpenStatus(trailID string, isOpen bool) error
-	UpdateTrailLastPreparationTime(trailID string, dateLastPreparation time.Time) (*diwise.ExerciseTrail, error)
+type TrailDatastore interface {
 }
 
-//NewDatabaseConnection does not open a new connection ...
-func NewDatabaseConnection(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, sourceBody []byte) (Datastore, error) {
+func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, sourceBody []byte) (TrailDatastore, error) {
 
 	featureCollection := &domain.FeatureCollection{}
 	err := json.Unmarshal(sourceBody, featureCollection)
@@ -32,7 +27,7 @@ func NewDatabaseConnection(logger zerolog.Logger, ctxBrokerClient domain.Context
 		return nil, fmt.Errorf("failed to unmarshal response from %s. (%s)", sourceURL, err.Error())
 	}
 
-	db := &myDB{
+	db := &trailDB{
 		ctxClient: ctxBrokerClient,
 		ctx:       ctx,
 	}
@@ -144,46 +139,10 @@ func propertyValueMatches(field domain.FeaturePropField, expectation string) boo
 	return value == expectation || value == ("\""+expectation+"\"")
 }
 
-type myDB struct {
+type trailDB struct {
 	trails    []domain.ExerciseTrail
 	ctxClient domain.ContextBrokerClient
 	ctx       context.Context
-}
-
-func (db *myDB) SetTrailOpenStatus(trailID string, isOpen bool) error {
-	for idx, trail := range db.trails {
-		if strings.Compare(trail.ID, trailID) == 0 {
-			status := "closed"
-			if isOpen {
-				status = "open"
-			}
-
-			db.trails[idx].Status = status
-			db.ctxClient.AddEntity(db.ctx, db.trails[idx])
-
-			return nil
-		}
-	}
-
-	return errors.New("not found")
-}
-
-func (db *myDB) UpdateTrailLastPreparationTime(trailID string, dateLastPreparation time.Time) (*diwise.ExerciseTrail, error) {
-	for idx, trail := range db.trails {
-		if strings.Compare(trail.ID, trailID) == 0 {
-			if trail.DateLastPrepared.After(dateLastPreparation) {
-				return nil, fmt.Errorf("last preparation date may not move backwards")
-			}
-
-			db.trails[idx].DateLastPrepared = dateLastPreparation
-
-			fiwareTrail := convertDBTrailToFiwareExerciseTrail(db.trails[idx])
-
-			return fiwareTrail, nil
-		}
-	}
-
-	return nil, errors.New("not found")
 }
 
 func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) *diwise.ExerciseTrail {
