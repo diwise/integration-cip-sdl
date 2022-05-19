@@ -3,10 +3,8 @@ module github.com/diwise/integration-cip-sdl
 go 1.18
 
 require (
-	github.com/diwise/messaging-golang v0.0.0-20220413073613-1dcf3cdf0dcd
 	github.com/diwise/service-chassis v0.0.0-20220426150153-706eb92d048e
 	github.com/go-chi/chi v1.5.4
-	github.com/rabbitmq/amqp091-go v1.3.2
 	github.com/rs/cors v1.8.2
 	github.com/rs/zerolog v1.26.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.32.0
