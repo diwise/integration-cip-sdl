@@ -97,14 +97,14 @@ func TestDataLoad(t *testing.T) {
 	ctxServer := setupMockServiceThatReturns(http.StatusCreated, "")
 	ctxBroker := domain.NewContextBrokerClient(ctxServer.URL, zerolog.Logger{})
 
-	_, err := StoreTrailsFromSource(log.With().Logger(), ctxBroker, context.Background(), url, []byte(response))
+	err := StoreTrailsFromSource(log.With().Logger(), ctxBroker, context.Background(), url, []byte(response))
 	is.NoErr(err) // new database failure
 }
 
 func TestThatNewDatabaseConnectionFailsOnEmptyApikey(t *testing.T) {
 	is := is.New(t)
 
-	_, err := StoreTrailsFromSource(log.With().Logger(), nil, context.Background(), "", nil)
+	err := StoreTrailsFromSource(log.With().Logger(), nil, context.Background(), "", nil)
 
 	is.True(err != nil) // NewDatabaseConnection should fail if apikey is left empty.
 }

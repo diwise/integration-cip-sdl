@@ -23,7 +23,7 @@ type client struct {
 	sourceURL string
 }
 
-func NewFacilitiesClient(apikey, sourceURL, prepStatusURL string, log zerolog.Logger) Client {
+func NewFacilitiesClient(apikey, sourceURL string, log zerolog.Logger) Client {
 	return &client{
 		apiKey:    apikey,
 		sourceURL: sourceURL,

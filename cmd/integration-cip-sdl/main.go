@@ -32,9 +32,8 @@ func main() {
 	if featureIsEnabled(logger, "facilities") {
 		facilitiesURL := env.GetVariableOrDie(logger, "FACILITIES_URL", "Facilities URL")
 		facilitiesApiKey := env.GetVariableOrDie(logger, "FACILITIES_API_KEY", "Facilities Api Key")
-		prepStatusURL := env.GetVariableOrDie(logger, "PREPARATION_STATUS_URL", "Preparation status url")
 
-		go SetupAndRunFacilities(facilitiesURL, facilitiesApiKey, prepStatusURL, logger, ctx, ctxBroker)
+		go SetupAndRunFacilities(facilitiesURL, facilitiesApiKey, logger, ctx, ctxBroker)
 	}
 
 	if featureIsEnabled(logger, "citywork") {
@@ -85,19 +84,31 @@ func setupRouterAndWaitForConnections(logger zerolog.Logger) {
 	}
 }
 
-func SetupAndRunFacilities(url, apiKey, prepStatusURL string, logger zerolog.Logger, ctx context.Context, ctxBroker domain.ContextBrokerClient) facilities.Client {
-	fc := facilities.NewFacilitiesClient(apiKey, url, prepStatusURL, logger)
-	fcBody, err := fc.Get(ctx)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to retrieve facilities information")
-	}
+func SetupAndRunFacilities(url, apiKey string, logger zerolog.Logger, ctx context.Context, ctxBroker domain.ContextBrokerClient) facilities.Client {
+	var prevResp []byte
+
+	fc := facilities.NewFacilitiesClient(apiKey, url, logger)
 
 	for {
-		_, err = facilities.StoreTrailsFromSource(logger, ctxBroker, ctx, url, fcBody)
+		resp, err := fc.Get(ctx)
 		if err != nil {
-			logger.Fatal().Err(err).Msg("failed to store facilities information")
+			logger.Fatal().Err(err).Msg("failed to retrieve facilities information")
 		}
 
-		time.Sleep(60 * time.Second)
+		if strings.Compare(string(resp), string(prevResp)) != 0 {
+			err = facilities.StoreTrailsFromSource(logger, ctxBroker, ctx, url, resp)
+			if err != nil {
+				logger.Fatal().Err(err).Msg("failed to store exercise trails information")
+			}
+			err = facilities.StoreBeachesFromSource(logger, ctxBroker, ctx, url, resp)
+			if err != nil {
+				logger.Fatal().Err(err).Msg("failed to store beaches information")
+			}
+		}
+
+		prevResp = resp
+
+		time.Sleep(60 * time.Minute)
+
 	}
 }

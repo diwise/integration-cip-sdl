@@ -19,12 +19,12 @@ import (
 type TrailDatastore interface {
 }
 
-func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, sourceBody []byte) (TrailDatastore, error) {
+func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, sourceBody []byte) error {
 
 	featureCollection := &domain.FeatureCollection{}
 	err := json.Unmarshal(sourceBody, featureCollection)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response from %s. (%s)", sourceURL, err.Error())
+		return fmt.Errorf("failed to unmarshal response from %s. (%s)", sourceURL, err.Error())
 	}
 
 	db := &trailDB{
@@ -56,7 +56,7 @@ func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient domain.Context
 		}
 	}
 
-	return db, nil
+	return nil
 }
 
 func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.ExerciseTrail, error) {

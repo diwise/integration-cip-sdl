@@ -18,13 +18,13 @@ type BeachDatastore interface {
 }
 
 //NewDatabaseConnection does not open a new connection ...
-func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, sourceBody []byte) (BeachDatastore, error) {
+func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, sourceBody []byte) error {
 
 	featureCollection := &domain.FeatureCollection{}
 	err := json.Unmarshal(sourceBody, featureCollection)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response from %s. (%s)", sourceURL, err.Error())
+		return fmt.Errorf("failed to unmarshal response from %s. (%s)", sourceURL, err.Error())
 	}
 
 	db := &beachDB{
@@ -54,7 +54,7 @@ func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient domain.Contex
 		}
 	}
 
-	return db, nil
+	return nil
 }
 
 func parsePublishedBeach(log zerolog.Logger, feature domain.Feature) (*domain.Beach, error) {
