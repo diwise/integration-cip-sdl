@@ -2,10 +2,12 @@ package facilities
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/diwise/integration-cip-sdl/internal/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -15,7 +17,7 @@ import (
 var sdltracer = otel.Tracer("facilities-client")
 
 type Client interface {
-	Get(ctx context.Context) ([]byte, error)
+	Get(ctx context.Context) (*domain.FeatureCollection, error)
 }
 
 type client struct {
@@ -30,7 +32,7 @@ func NewFacilitiesClient(apikey, sourceURL string, log zerolog.Logger) Client {
 	}
 }
 
-func (c *client) Get(ctx context.Context) ([]byte, error) {
+func (c *client) Get(ctx context.Context) (*domain.FeatureCollection, error) {
 	var err error
 	ctx, span := sdltracer.Start(ctx, "get-facilities-information")
 	defer func() {
@@ -72,5 +74,11 @@ func (c *client) Get(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	return body, nil
+	featureCollection := &domain.FeatureCollection{}
+	err = json.Unmarshal(body, featureCollection)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response from %s. (%s)", c.sourceURL, err.Error())
+	}
+
+	return featureCollection, nil
 }

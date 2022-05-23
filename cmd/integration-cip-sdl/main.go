@@ -85,28 +85,23 @@ func setupRouterAndWaitForConnections(logger zerolog.Logger) {
 }
 
 func SetupAndRunFacilities(url, apiKey string, logger zerolog.Logger, ctx context.Context, ctxBroker domain.ContextBrokerClient) facilities.Client {
-	var prevResp []byte
 
 	fc := facilities.NewFacilitiesClient(apiKey, url, logger)
 
 	for {
-		resp, err := fc.Get(ctx)
+		features, err := fc.Get(ctx)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("failed to retrieve facilities information")
 		}
 
-		if strings.Compare(string(resp), string(prevResp)) != 0 {
-			err = facilities.StoreTrailsFromSource(logger, ctxBroker, ctx, url, resp)
-			if err != nil {
-				logger.Fatal().Err(err).Msg("failed to store exercise trails information")
-			}
-			err = facilities.StoreBeachesFromSource(logger, ctxBroker, ctx, url, resp)
-			if err != nil {
-				logger.Fatal().Err(err).Msg("failed to store beaches information")
-			}
+		err = facilities.StoreTrailsFromSource(logger, ctxBroker, ctx, url, features)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to store exercise trails information")
 		}
-
-		prevResp = resp
+		err = facilities.StoreBeachesFromSource(logger, ctxBroker, ctx, url, features)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to store beaches information")
+		}
 
 		time.Sleep(60 * time.Minute)
 

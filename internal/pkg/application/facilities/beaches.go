@@ -18,18 +18,9 @@ type BeachDatastore interface {
 }
 
 //NewDatabaseConnection does not open a new connection ...
-func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, sourceBody []byte) error {
-
-	featureCollection := &domain.FeatureCollection{}
-	err := json.Unmarshal(sourceBody, featureCollection)
-
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal response from %s. (%s)", sourceURL, err.Error())
-	}
-
-	db := &beachDB{
-		ctxClient: ctxBrokerClient,
-		ctx:       ctx,
+func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection *domain.FeatureCollection) error {
+	if featureCollection == nil {
+		return fmt.Errorf("no features were found")
 	}
 
 	for _, feature := range featureCollection.Features {
@@ -41,11 +32,9 @@ func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient domain.Contex
 					continue
 				}
 
-				db.beaches = append(db.beaches, *beach)
-
 				fiwareBeach := convertDBBeachToFiwareBeach(*beach)
 
-				err = db.ctxClient.AddEntity(db.ctx, fiwareBeach)
+				err = ctxBrokerClient.AddEntity(ctx, fiwareBeach)
 				if err != nil {
 					logger.Error().Err(err).Msg("failed to post beach to context broker")
 					continue
@@ -182,12 +171,6 @@ var seeAlsoRefs map[int64]extraInfo = map[int64]extraInfo{
 	1631: {nuts: "SE0712281000003480", sensorID: "sk-elt-temp-20"},
 }
 
-type beachDB struct {
-	beaches   []domain.Beach
-	ctxClient domain.ContextBrokerClient
-	ctx       context.Context
-}
-
 func convertDBBeachToFiwareBeach(b domain.Beach) *fiware.Beach {
 	location := geojson.CreateGeoJSONPropertyFromMultiPolygon(b.Geometry.Lines)
 	beach := fiware.NewBeach(b.ID, b.Name, location).WithDescription(b.Description)
@@ -210,10 +193,6 @@ func convertDBBeachToFiwareBeach(b domain.Beach) *fiware.Beach {
 	if len(references) > 0 {
 		ref := types.NewMultiObjectRelationship(references)
 		beach.RefSeeAlso = &ref
-	}
-
-	if b.WaterTemperature != nil {
-		beach.WaterTemperature = types.NewNumberProperty(*b.WaterTemperature)
 	}
 
 	if !b.DateCreated.IsZero() {

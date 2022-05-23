@@ -19,17 +19,9 @@ import (
 type TrailDatastore interface {
 }
 
-func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, sourceBody []byte) error {
-
-	featureCollection := &domain.FeatureCollection{}
-	err := json.Unmarshal(sourceBody, featureCollection)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal response from %s. (%s)", sourceURL, err.Error())
-	}
-
-	db := &trailDB{
-		ctxClient: ctxBrokerClient,
-		ctx:       ctx,
+func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection *domain.FeatureCollection) error {
+	if featureCollection == nil {
+		return fmt.Errorf("no features were found")
 	}
 
 	for _, feature := range featureCollection.Features {
@@ -43,11 +35,9 @@ func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient domain.Context
 
 				exerciseTrail.Source = fmt.Sprintf("%s/get/%d", sourceURL, feature.ID)
 
-				db.trails = append(db.trails, *exerciseTrail)
-
 				fiwareTrail := convertDBTrailToFiwareExerciseTrail(*exerciseTrail)
 
-				err = db.ctxClient.AddEntity(db.ctx, fiwareTrail)
+				err = ctxBrokerClient.AddEntity(ctx, fiwareTrail)
 				if err != nil {
 					logger.Error().Err(err).Msg("failed to post exercise trail to context broker")
 					continue
@@ -137,12 +127,6 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 func propertyValueMatches(field domain.FeaturePropField, expectation string) bool {
 	value := string(field.Value[0:len(field.Value)])
 	return value == expectation || value == ("\""+expectation+"\"")
-}
-
-type trailDB struct {
-	trails    []domain.ExerciseTrail
-	ctxClient domain.ContextBrokerClient
-	ctx       context.Context
 }
 
 func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) *diwise.ExerciseTrail {

@@ -2,6 +2,7 @@ package facilities
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -97,16 +98,11 @@ func TestDataLoad(t *testing.T) {
 	ctxServer := setupMockServiceThatReturns(http.StatusCreated, "")
 	ctxBroker := domain.NewContextBrokerClient(ctxServer.URL, zerolog.Logger{})
 
-	err := StoreTrailsFromSource(log.With().Logger(), ctxBroker, context.Background(), url, []byte(response))
+	fc := &domain.FeatureCollection{}
+	json.Unmarshal([]byte(response), &fc)
+
+	err := StoreTrailsFromSource(log.With().Logger(), ctxBroker, context.Background(), url, fc)
 	is.NoErr(err) // new database failure
-}
-
-func TestThatNewDatabaseConnectionFailsOnEmptyApikey(t *testing.T) {
-	is := is.New(t)
-
-	err := StoreTrailsFromSource(log.With().Logger(), nil, context.Background(), "", nil)
-
-	is.True(err != nil) // NewDatabaseConnection should fail if apikey is left empty.
 }
 
 func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server {
