@@ -18,11 +18,7 @@ type BeachDatastore interface {
 }
 
 //NewDatabaseConnection does not open a new connection ...
-func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection *domain.FeatureCollection) error {
-	if featureCollection == nil {
-		return fmt.Errorf("no features were found")
-	}
-
+func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection domain.FeatureCollection) error {
 	for _, feature := range featureCollection.Features {
 		if feature.Properties.Published {
 			if feature.Properties.Type == "Strandbad" {

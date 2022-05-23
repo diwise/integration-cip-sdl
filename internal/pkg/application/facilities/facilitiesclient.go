@@ -8,7 +8,9 @@ import (
 	"net/http"
 
 	"github.com/diwise/integration-cip-sdl/internal/domain"
+
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
@@ -35,12 +37,7 @@ func NewFacilitiesClient(apikey, sourceURL string, log zerolog.Logger) Client {
 func (c *client) Get(ctx context.Context) (*domain.FeatureCollection, error) {
 	var err error
 	ctx, span := sdltracer.Start(ctx, "get-facilities-information")
-	defer func() {
-		if err != nil {
-			span.RecordError(err)
-		}
-		span.End()
-	}()
+	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 	log := logging.GetFromContext(ctx)
 
@@ -60,13 +57,12 @@ func (c *client) Get(ctx context.Context) (*domain.FeatureCollection, error) {
 		log.Error().Err(err).Msgf("failed to retrieve facilities information")
 		return nil, err
 	}
+	defer apiResponse.Body.Close()
 
 	if apiResponse.StatusCode != http.StatusOK {
 		log.Error().Msgf("failed to retrieve facilities information, expected status code %d, but got %d", http.StatusOK, apiResponse.StatusCode)
 		return nil, fmt.Errorf("expected status code %d, but got %d", http.StatusOK, apiResponse.StatusCode)
 	}
-
-	defer apiResponse.Body.Close()
 
 	body, err := io.ReadAll(apiResponse.Body)
 	if err != nil {

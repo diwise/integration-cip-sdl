@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,8 +33,14 @@ func main() {
 	if featureIsEnabled(logger, "facilities") {
 		facilitiesURL := env.GetVariableOrDie(logger, "FACILITIES_URL", "Facilities URL")
 		facilitiesApiKey := env.GetVariableOrDie(logger, "FACILITIES_API_KEY", "Facilities Api Key")
+		timeInterval := env.GetVariableOrDefault(logger, "FACILITIES_POLLING_INTERVAL", "60")
 
-		go SetupAndRunFacilities(facilitiesURL, facilitiesApiKey, logger, ctx, ctxBroker)
+		parsedTime, err := strconv.ParseInt(timeInterval, 0, 64)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("FACILITIES_POLLING_INTERVAL must be set to valid integer")
+		}
+
+		go SetupAndRunFacilities(facilitiesURL, facilitiesApiKey, int(parsedTime), logger, ctx, ctxBroker)
 	}
 
 	if featureIsEnabled(logger, "citywork") {
@@ -84,26 +91,26 @@ func setupRouterAndWaitForConnections(logger zerolog.Logger) {
 	}
 }
 
-func SetupAndRunFacilities(url, apiKey string, logger zerolog.Logger, ctx context.Context, ctxBroker domain.ContextBrokerClient) facilities.Client {
+func SetupAndRunFacilities(url, apiKey string, timeInterval int, logger zerolog.Logger, ctx context.Context, ctxBroker domain.ContextBrokerClient) facilities.Client {
 
 	fc := facilities.NewFacilitiesClient(apiKey, url, logger)
 
 	for {
 		features, err := fc.Get(ctx)
 		if err != nil {
-			logger.Fatal().Err(err).Msg("failed to retrieve facilities information")
+			logger.Error().Err(err).Msg("failed to retrieve facilities information")
 		}
 
-		err = facilities.StoreTrailsFromSource(logger, ctxBroker, ctx, url, features)
+		err = facilities.StoreTrailsFromSource(logger, ctxBroker, ctx, url, *features)
 		if err != nil {
-			logger.Fatal().Err(err).Msg("failed to store exercise trails information")
+			logger.Error().Err(err).Msg("failed to store exercise trails information")
 		}
-		err = facilities.StoreBeachesFromSource(logger, ctxBroker, ctx, url, features)
+		err = facilities.StoreBeachesFromSource(logger, ctxBroker, ctx, url, *features)
 		if err != nil {
-			logger.Fatal().Err(err).Msg("failed to store beaches information")
+			logger.Error().Err(err).Msg("failed to store beaches information")
 		}
 
-		time.Sleep(60 * time.Minute)
+		time.Sleep(time.Duration(timeInterval) * time.Minute)
 
 	}
 }

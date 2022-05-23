@@ -19,10 +19,7 @@ import (
 type TrailDatastore interface {
 }
 
-func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection *domain.FeatureCollection) error {
-	if featureCollection == nil {
-		return fmt.Errorf("no features were found")
-	}
+func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection domain.FeatureCollection) error {
 
 	for _, feature := range featureCollection.Features {
 		if feature.Properties.Published {

@@ -98,7 +98,7 @@ func TestDataLoad(t *testing.T) {
 	ctxServer := setupMockServiceThatReturns(http.StatusCreated, "")
 	ctxBroker := domain.NewContextBrokerClient(ctxServer.URL, zerolog.Logger{})
 
-	fc := &domain.FeatureCollection{}
+	fc := domain.FeatureCollection{}
 	json.Unmarshal([]byte(response), &fc)
 
 	err := StoreTrailsFromSource(log.With().Logger(), ctxBroker, context.Background(), url, fc)
