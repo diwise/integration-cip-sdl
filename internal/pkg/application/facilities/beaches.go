@@ -35,6 +35,7 @@ func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient domain.Contex
 					logger.Error().Err(err).Msg("failed to post beach to context broker")
 					continue
 				}
+				logger.Info().Msgf("posted beach %s to context broker", fiwareBeach.ID)
 			}
 		}
 	}
@@ -167,9 +168,31 @@ var seeAlsoRefs map[int64]extraInfo = map[int64]extraInfo{
 	1631: {nuts: "SE0712281000003480", sensorID: "sk-elt-temp-20"},
 }
 
-func convertDBBeachToFiwareBeach(b domain.Beach) *fiware.Beach {
+type Beach struct {
+	ID           string                  `json:"id"`
+	Name         *types.TextProperty     `json:"name,omitempty"`
+	Location     geojson.GeoJSONProperty `json:"location"`
+	RefSeeAlso   *types.TextListProperty `json:"refSeeAlso,omitempty"`
+	DateCreated  *types.DateTimeProperty `json:"dateCreated,omitempty"`
+	DateModified *types.DateTimeProperty `json:"dateModified,omitempty"`
+	Description  *types.TextProperty     `json:"description,omitempty"`
+	Context      []string                `json:"@context"`
+	Type         string                  `json:"type"`
+}
+
+func convertDBBeachToFiwareBeach(b domain.Beach) *Beach {
 	location := geojson.CreateGeoJSONPropertyFromMultiPolygon(b.Geometry.Lines)
-	beach := fiware.NewBeach(b.ID, b.Name, location).WithDescription(b.Description)
+	//beach := fiware.NewBeach(b.ID, b.Name, location).WithDescription(b.Description)
+
+	beach := &Beach{}
+
+	beach.ID = b.ID
+	beach.Type = "Beach"
+	beach.Context = []string{"https://smartdatamodels.org/context.jsonld",
+		"https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"}
+	beach.Name = types.NewTextProperty(b.Name)
+	beach.Location = *location
+	beach.Description = types.NewTextProperty(b.Description)
 
 	references := []string{}
 
@@ -187,8 +210,8 @@ func convertDBBeachToFiwareBeach(b domain.Beach) *fiware.Beach {
 	}
 
 	if len(references) > 0 {
-		ref := types.NewMultiObjectRelationship(references)
-		beach.RefSeeAlso = &ref
+		ref := types.NewTextListProperty(references)
+		beach.RefSeeAlso = ref
 	}
 
 	if !b.DateCreated.IsZero() {
