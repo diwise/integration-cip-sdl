@@ -3,11 +3,15 @@ package facilities
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
+	"github.com/diwise/context-broker/pkg/ngsild"
+	"github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/test"
 	"github.com/diwise/integration-cip-sdl/internal/domain"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
@@ -98,7 +102,7 @@ func TestTrailDataLoad(t *testing.T) {
 
 	err := StoreTrailsFromSource(log.With().Logger(), ctxBrokerMock, context.Background(), server.URL, fc)
 	is.NoErr(err)
-	is.Equal(len(ctxBrokerMock.AddEntityCalls()), 2)
+	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 2)
 }
 
 func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server {
@@ -111,12 +115,12 @@ func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server
 	}))
 }
 
-func testSetup(t *testing.T, responseCode int, body string) (*is.I, *domain.ContextBrokerClientMock, *httptest.Server) {
+func testSetup(t *testing.T, responseCode int, body string) (*is.I, *test.ContextBrokerClientMock, *httptest.Server) {
 	is := is.New(t)
 	mockServer := setupMockServiceThatReturns(responseCode, body)
-	ctxBroker := &domain.ContextBrokerClientMock{
-		AddEntityFunc: func(ctx context.Context, entity interface{}) error {
-			return nil
+	ctxBroker := &test.ContextBrokerClientMock{
+		CreateEntityFunc: func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
+			return nil, fmt.Errorf("not implemented")
 		},
 	}
 

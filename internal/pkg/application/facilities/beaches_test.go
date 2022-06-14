@@ -18,5 +18,5 @@ func TestBeachesDataLoad(t *testing.T) {
 
 	err := StoreBeachesFromSource(log.With().Logger(), ctxBrokerMock, context.Background(), server.URL, fc)
 	is.NoErr(err)
-	is.Equal(len(ctxBrokerMock.AddEntityCalls()), 1)
+	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
 }

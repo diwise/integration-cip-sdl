@@ -54,7 +54,7 @@ func (c *sdlClient) Get(ctx context.Context) (*sdlResponse, error) {
 
 	apiResponse, err := httpClient.Do(apiReq)
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to retrieve traffic information")
+		log.Error().Err(err).Msg("failed to retrieve traffic information")
 		return nil, err
 	}
 
@@ -67,7 +67,7 @@ func (c *sdlClient) Get(ctx context.Context) (*sdlResponse, error) {
 
 	body, err := io.ReadAll(apiResponse.Body)
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to read response body")
+		log.Error().Err(err).Msg("failed to read response body")
 		return nil, err
 	}
 

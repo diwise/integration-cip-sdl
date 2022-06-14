@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/diwise/integration-cip-sdl/internal/domain"
+	"github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/application/citywork"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/application/facilities"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
@@ -20,15 +20,17 @@ import (
 	"github.com/rs/zerolog"
 )
 
+const serviceName string = "integration-cip-sdl"
+
 func main() {
 	serviceVersion := buildinfo.SourceVersion()
-	serviceName := "integration-cip-sdl"
 
 	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
 	defer cleanup()
 
 	contextBrokerURL := env.GetVariableOrDie(logger, "CONTEXT_BROKER_URL", "Context Broker URL")
-	ctxBroker := domain.NewContextBrokerClient(contextBrokerURL, logger)
+
+	ctxBroker := client.NewContextBrokerClient(contextBrokerURL, client.Debug("true"))
 
 	if featureIsEnabled(logger, "facilities") {
 		facilitiesURL := env.GetVariableOrDie(logger, "FACILITIES_URL", "Facilities URL")
@@ -49,7 +51,9 @@ func main() {
 		go cw.Start(ctx)
 	}
 
-	setupRouterAndWaitForConnections(logger)
+	port := env.GetVariableOrDefault(logger, "SERVICE_PORT", "8080")
+
+	setupRouterAndWaitForConnections(logger, port)
 }
 
 //featureIsEnabled checks wether a given feature is enabled by exanding the feature name into <uppercase>_ENABLED and checking if the corresponding environment variable is set to true.
@@ -67,13 +71,13 @@ func featureIsEnabled(logger zerolog.Logger, feature string) bool {
 	return isEnabled
 }
 
-func SetupCityWorkService(log zerolog.Logger, sundsvallvaxerURL string, ctxBroker domain.ContextBrokerClient) citywork.CityWorkSvc {
-	c := citywork.NewSdlClient(sundsvallvaxerURL, log)
+func SetupCityWorkService(log zerolog.Logger, cityWorkURL string, ctxBroker client.ContextBrokerClient) citywork.CityWorkSvc {
+	c := citywork.NewSdlClient(cityWorkURL, log)
 
 	return citywork.NewCityWorkService(log, c, ctxBroker)
 }
 
-func setupRouterAndWaitForConnections(logger zerolog.Logger) {
+func setupRouterAndWaitForConnections(logger zerolog.Logger, port string) {
 	r := chi.NewRouter()
 	r.Use(cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
@@ -85,29 +89,29 @@ func setupRouterAndWaitForConnections(logger zerolog.Logger) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	err := http.ListenAndServe(":8080", r)
+	err := http.ListenAndServe(":"+port, r)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to start router")
 	}
 }
 
-func SetupAndRunFacilities(url, apiKey string, timeInterval int, logger zerolog.Logger, ctx context.Context, ctxBroker domain.ContextBrokerClient) facilities.Client {
+func SetupAndRunFacilities(url, apiKey string, timeInterval int, logger zerolog.Logger, ctx context.Context, ctxBroker client.ContextBrokerClient) facilities.Client {
 
-	fc := facilities.NewFacilitiesClient(apiKey, url, logger)
+	fc := facilities.NewClient(apiKey, url, logger)
 
 	for {
 		features, err := fc.Get(ctx)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to retrieve facilities information")
-		}
-
-		err = facilities.StoreTrailsFromSource(logger, ctxBroker, ctx, url, *features)
-		if err != nil {
-			logger.Error().Err(err).Msg("failed to store exercise trails information")
-		}
-		err = facilities.StoreBeachesFromSource(logger, ctxBroker, ctx, url, *features)
-		if err != nil {
-			logger.Error().Err(err).Msg("failed to store beaches information")
+		} else {
+			err = facilities.StoreTrailsFromSource(logger, ctxBroker, ctx, url, *features)
+			if err != nil {
+				logger.Error().Err(err).Msg("failed to store exercise trails information")
+			}
+			err = facilities.StoreBeachesFromSource(logger, ctxBroker, ctx, url, *features)
+			if err != nil {
+				logger.Error().Err(err).Msg("failed to store beaches information")
+			}
 		}
 
 		time.Sleep(time.Duration(timeInterval) * time.Minute)

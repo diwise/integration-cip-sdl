@@ -6,19 +6,20 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/diwise/context-broker/pkg/datamodels/fiware"
+	"github.com/diwise/context-broker/pkg/ngsild/client"
+	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
+	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
 	"github.com/diwise/integration-cip-sdl/internal/domain"
-	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
-	"github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/geojson"
-	"github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/types"
 	"github.com/rs/zerolog"
 )
 
-//Datastore is an interface that abstracts away the database implementation
-type BeachDatastore interface {
-}
-
 //NewDatabaseConnection does not open a new connection ...
-func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection domain.FeatureCollection) error {
+func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient client.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection domain.FeatureCollection) error {
+	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
+
 	for _, feature := range featureCollection.Features {
 		if feature.Properties.Published {
 			if feature.Properties.Type == "Strandbad" {
@@ -30,12 +31,12 @@ func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient domain.Contex
 
 				fiwareBeach := convertDBBeachToFiwareBeach(*beach)
 
-				err = ctxBrokerClient.AddEntity(ctx, fiwareBeach)
+				res, err := ctxBrokerClient.CreateEntity(ctx, fiwareBeach, headers)
 				if err != nil {
 					logger.Error().Err(err).Msg("failed to post beach to context broker")
 					continue
 				}
-				logger.Info().Msgf("posted beach %s to context broker", fiwareBeach.ID)
+				logger.Info().Msgf("posted beach %s to context broker", res.Location())
 			}
 		}
 	}
@@ -168,37 +169,20 @@ var seeAlsoRefs map[int64]extraInfo = map[int64]extraInfo{
 	1631: {nuts: "SE0712281000003480", sensorID: "sk-elt-temp-20"},
 }
 
-type Beach struct {
-	ID           string                  `json:"id"`
-	Name         *types.TextProperty     `json:"name,omitempty"`
-	Location     geojson.GeoJSONProperty `json:"location"`
-	RefSeeAlso   *types.TextListProperty `json:"refSeeAlso,omitempty"`
-	DateCreated  *types.DateTimeProperty `json:"dateCreated,omitempty"`
-	DateModified *types.DateTimeProperty `json:"dateModified,omitempty"`
-	Description  *types.TextProperty     `json:"description,omitempty"`
-	Context      []string                `json:"@context"`
-	Type         string                  `json:"type"`
-}
+func convertDBBeachToFiwareBeach(b domain.Beach) ngsitypes.Entity {
 
-func convertDBBeachToFiwareBeach(b domain.Beach) *Beach {
-	location := geojson.CreateGeoJSONPropertyFromMultiPolygon(b.Geometry.Lines)
-	//beach := fiware.NewBeach(b.ID, b.Name, location).WithDescription(b.Description)
-
-	beach := &Beach{}
-
-	beach.ID = b.ID
-	beach.Type = "Beach"
-	beach.Context = []string{"https://smartdatamodels.org/context.jsonld",
-		"https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"}
-	beach.Name = types.NewTextProperty(b.Name)
-	beach.Location = *location
-	beach.Description = types.NewTextProperty(b.Description)
+	properties := []entities.EntityDecoratorFunc{
+		entities.Context([]string{"https://smartdatamodels.org/context.jsonld", "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"}),
+		decorators.Description(b.Description),
+		decorators.LocationMP(b.Geometry.Lines),
+		decorators.DateTimeIfNotZero(properties.DateCreated, b.DateCreated),
+		decorators.DateTimeIfNotZero(properties.DateModified, b.DateModified),
+	}
 
 	references := []string{}
 
 	if b.SensorID != nil {
-		sensor := fmt.Sprintf("%s%s", fiware.DeviceIDPrefix, *b.SensorID)
-		references = append(references, sensor)
+		references = append(references, fmt.Sprintf("%s%s", fiware.DeviceIDPrefix, *b.SensorID))
 	}
 
 	if b.NUTSCode != nil {
@@ -210,17 +194,10 @@ func convertDBBeachToFiwareBeach(b domain.Beach) *Beach {
 	}
 
 	if len(references) > 0 {
-		ref := types.NewTextListProperty(references)
-		beach.RefSeeAlso = ref
+		properties = append(properties, decorators.RefSeeAlso(references))
 	}
 
-	if !b.DateCreated.IsZero() {
-		beach.DateCreated = types.CreateDateTimeProperty(b.DateCreated.Format(time.RFC3339))
-	}
-
-	if !b.DateModified.IsZero() {
-		beach.DateModified = types.CreateDateTimeProperty(b.DateModified.Format(time.RFC3339))
-	}
+	beach, _ := fiware.NewBeach(b.ID, b.Name, properties...)
 
 	return beach
 }

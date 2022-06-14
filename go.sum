@@ -55,10 +55,10 @@ github.com/cncf/xds/go v0.0.0-20211011173535-cb28da3451f1/go.mod h1:eXthEFrGJvWH
 github.com/coreos/go-systemd/v22 v22.3.2/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/diwise/ngsi-ld-golang v0.0.0-20220509072650-254745b49ff6 h1:bd52PWhNs5yqJF8qFNsWiX1FyIdoKNgiSh223ExB8A0=
-github.com/diwise/ngsi-ld-golang v0.0.0-20220509072650-254745b49ff6/go.mod h1:rJEtJBmPwq3c+0leOb2Zy/u/Z9eTIT8RJQFyGJzoMrM=
-github.com/diwise/service-chassis v0.0.0-20220426150153-706eb92d048e h1:i7JZMCANQBIxM75YcS9m0jNJD51UPO14w3lJw4Kj2Sg=
-github.com/diwise/service-chassis v0.0.0-20220426150153-706eb92d048e/go.mod h1:DOuMOFnrgt7ut1u0/DqShB/UkeSss58ATAbUAgNizOE=
+github.com/diwise/context-broker v0.0.0-20220613202823-b87681ea9ea1 h1:FPBUMN/c577I86YFIBh6ZdS0x6tO2Egz2/w2L5cuCcQ=
+github.com/diwise/context-broker v0.0.0-20220613202823-b87681ea9ea1/go.mod h1:hEIWELN892bPSYGSOfxtUHOJ4FZJ056+K8Pxrqp5i0I=
+github.com/diwise/service-chassis v0.0.0-20220602203825-64e6594861be h1:+RTd2uHl6CssupkdpCsRt0J8W5XtqLvTK1Hk/rs4rvc=
+github.com/diwise/service-chassis v0.0.0-20220602203825-64e6594861be/go.mod h1:LwU0G+b2O3TI/WuiLPVUXDaDuStzNJgUHXpSS6Q9JPo=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1mIlRU8Am5FuJP05cCM98=
@@ -136,7 +136,6 @@ github.com/google/pprof v0.0.0-20200430221834-fc25d7d30c6d/go.mod h1:ZgVRPoUq/hf
 github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99/go.mod h1:ZgVRPoUq/hfqzAqh7sHMqb3I9Rq5C59dIz2SbBwJ4eM=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/google/uuid v1.3.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/googleapis/gax-go/v2 v2.0.4/go.mod h1:0Wqv26UfaUD9n4G6kQubkQ+KchISgw+vpHVxEJEs9eg=
 github.com/googleapis/gax-go/v2 v2.0.5/go.mod h1:DWXyrwAJ9X0FpwwEdw+IPEYBICEFu5mhpdKc/us6bOk=
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=

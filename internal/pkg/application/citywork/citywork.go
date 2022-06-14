@@ -6,19 +6,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/diwise/integration-cip-sdl/internal/domain"	
-	geojson "github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/geojson"
-	types "github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/types"
-	fiware "github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
+	"github.com/diwise/context-broker/pkg/datamodels/fiware"
+	"github.com/diwise/context-broker/pkg/ngsild/client"
+	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/rs/zerolog"
 )
 
 type CityWorkSvc interface {
 	Start(ctx context.Context) error
+	//TODO: This is not supposed to be a public interface (only exposed for testing it seems)
 	getAndPublishCityWork(ctx context.Context) error
 }
 
-func NewCityWorkService(log zerolog.Logger, s SdlClient, c domain.ContextBrokerClient) CityWorkSvc {
+func NewCityWorkService(log zerolog.Logger, s SdlClient, c client.ContextBrokerClient) CityWorkSvc {
 	return &cw{
 		log:           log,
 		sdlClient:     s,
@@ -29,7 +31,7 @@ func NewCityWorkService(log zerolog.Logger, s SdlClient, c domain.ContextBrokerC
 type cw struct {
 	log           zerolog.Logger
 	sdlClient     SdlClient
-	contextbroker domain.ContextBrokerClient
+	contextbroker client.ContextBrokerClient
 }
 
 var previous map[string]string = make(map[string]string)
@@ -53,6 +55,8 @@ func (cw *cw) getAndPublishCityWork(ctx context.Context) error {
 		return fmt.Errorf("failed to get city work")
 	}
 
+	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
+
 	for _, f := range response.Features {
 		featureID := f.ID()
 		if _, exists := previous[featureID]; exists {
@@ -61,7 +65,7 @@ func (cw *cw) getAndPublishCityWork(ctx context.Context) error {
 
 		cwModel := toCityWorkModel(f)
 
-		err = cw.contextbroker.AddEntity(ctx, cwModel)
+		_, err = cw.contextbroker.CreateEntity(ctx, cwModel, headers)
 		if err != nil {
 			cw.log.Error().Err(err).Msg("failed to add entity")
 			continue
@@ -73,18 +77,19 @@ func (cw *cw) getAndPublishCityWork(ctx context.Context) error {
 	return nil
 }
 
-func toCityWorkModel(sf sdlFeature) fiware.CityWork {
+func toCityWorkModel(sf sdlFeature) ngsitypes.Entity {
 	long, lat, _ := sf.Geometry.AsPoint()
 
 	startDate := strings.ReplaceAll(sf.Properties.Start, "Z", "") + "T00:00:00Z"
 	endDate := strings.ReplaceAll(sf.Properties.End, "Z", "") + "T23:59:59Z"
 
-	cw := fiware.NewCityWork(sf.ID())
-	cw.StartDate = *types.CreateDateTimeProperty(startDate)
-	cw.EndDate = *types.CreateDateTimeProperty(endDate)
-	cw.Location = geojson.CreateGeoJSONPropertyFromWGS84(long, lat)
-	cw.DateCreated = *types.CreateDateTimeProperty(time.Now().UTC().Format(time.RFC3339))
-	cw.Description = types.NewTextProperty(sf.Properties.Description)
+	cw, _ := entities.New(fiware.CityWorkIDPrefix+sf.ID(), fiware.CityWorkTypeName,
+		decorators.Location(lat, long),
+		decorators.Description(sf.Properties.Description),
+		decorators.DateTime("startDate", startDate),
+		decorators.DateTime("endDate", endDate),
+		decorators.DateTime("dateCreated", time.Now().UTC().Format(time.RFC3339)),
+	)
 
 	return cw
 }

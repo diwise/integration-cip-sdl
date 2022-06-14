@@ -22,19 +22,19 @@ type Client interface {
 	Get(ctx context.Context) (*domain.FeatureCollection, error)
 }
 
-type client struct {
+type clientImpl struct {
 	apiKey    string
 	sourceURL string
 }
 
-func NewFacilitiesClient(apikey, sourceURL string, log zerolog.Logger) Client {
-	return &client{
+func NewClient(apikey, sourceURL string, log zerolog.Logger) Client {
+	return &clientImpl{
 		apiKey:    apikey,
 		sourceURL: sourceURL,
 	}
 }
 
-func (c *client) Get(ctx context.Context) (*domain.FeatureCollection, error) {
+func (c *clientImpl) Get(ctx context.Context) (*domain.FeatureCollection, error) {
 	var err error
 	ctx, span := sdltracer.Start(ctx, "get-facilities-information")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
@@ -54,7 +54,7 @@ func (c *client) Get(ctx context.Context) (*domain.FeatureCollection, error) {
 
 	apiResponse, err := httpClient.Do(apiReq)
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to retrieve facilities information")
+		log.Error().Err(err).Msg("failed to retrieve facilities information")
 		return nil, err
 	}
 	defer apiResponse.Body.Close()
@@ -66,7 +66,7 @@ func (c *client) Get(ctx context.Context) (*domain.FeatureCollection, error) {
 
 	body, err := io.ReadAll(apiResponse.Body)
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to read response body")
+		log.Error().Err(err).Msg("failed to read response body")
 		return nil, err
 	}
 

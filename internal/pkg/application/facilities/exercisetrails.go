@@ -9,17 +9,18 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/diwise/context-broker/pkg/datamodels/diwise"
+	"github.com/diwise/context-broker/pkg/ngsild/client"
+	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
+	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
 	"github.com/diwise/integration-cip-sdl/internal/domain"
-	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/diwise"
-	"github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/geojson"
-	"github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/types"
 )
 
-//Datastore is an interface that abstracts away the database implementation
-type TrailDatastore interface {
-}
+func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient client.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection domain.FeatureCollection) error {
 
-func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient domain.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection domain.FeatureCollection) error {
+	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
 
 	for _, feature := range featureCollection.Features {
 		if feature.Properties.Published {
@@ -34,7 +35,7 @@ func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient domain.Context
 
 				fiwareTrail := convertDBTrailToFiwareExerciseTrail(*exerciseTrail)
 
-				err = ctxBrokerClient.AddEntity(ctx, fiwareTrail)
+				_, err = ctxBrokerClient.CreateEntity(ctx, fiwareTrail, headers)
 				if err != nil {
 					logger.Error().Err(err).Msg("failed to post exercise trail to context broker")
 					continue
@@ -47,7 +48,7 @@ func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient domain.Context
 }
 
 func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.ExerciseTrail, error) {
-	log.Info().Msgf("found published exercise trail %d %s\n", feature.ID, feature.Properties.Name)
+	log.Info().Msgf("found published exercise trail %d %s", feature.ID, feature.Properties.Name)
 
 	trail := &domain.ExerciseTrail{
 		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
@@ -126,37 +127,32 @@ func propertyValueMatches(field domain.FeaturePropField, expectation string) boo
 	return value == expectation || value == ("\""+expectation+"\"")
 }
 
-func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) *diwise.ExerciseTrail {
-	location := geojson.CreateGeoJSONPropertyFromLineString(trail.Geometry.Lines)
-	exerciseTrail := diwise.NewExerciseTrail(trail.ID, trail.Name, trail.Length, trail.Description, location)
+func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) ngsitypes.Entity {
 
-	if !trail.DateCreated.IsZero() {
-		exerciseTrail.DateCreated = types.CreateDateTimeProperty(trail.DateCreated.Format(time.RFC3339))
-	}
-
-	if !trail.DateModified.IsZero() {
-		exerciseTrail.DateModified = types.CreateDateTimeProperty(trail.DateModified.Format(time.RFC3339))
-	}
-
-	if !trail.DateLastPrepared.IsZero() {
-		exerciseTrail.DateLastPreparation = types.CreateDateTimeProperty(trail.DateLastPrepared.Format(time.RFC3339))
-	}
+	attributes := append(
+		make([]entities.EntityDecoratorFunc, 0, 8),
+		LocationLS(trail.Geometry.Lines), Description(trail.Description),
+		DateTimeIfNotZero(properties.DateCreated, trail.DateCreated),
+		DateTimeIfNotZero(properties.DateModified, trail.DateModified),
+		DateTimeIfNotZero("dateLastPreparation", trail.DateLastPrepared),
+	)
 
 	if trail.AreaServed != "" {
-		exerciseTrail.AreaServed = types.NewTextProperty(trail.AreaServed)
+		attributes = append(attributes, Text("areaServed", trail.AreaServed))
 	}
 
 	if len(trail.Category) > 0 {
-		exerciseTrail.Category = types.NewTextListProperty(trail.Category)
+		attributes = append(attributes, TextList("category", trail.Category))
 	}
 
 	if trail.Source != "" {
-		exerciseTrail.Source = types.NewTextProperty(trail.Source)
+		attributes = append(attributes, Source(trail.Source))
 	}
 
 	if trail.Status != "" {
-		exerciseTrail.Status = types.NewTextProperty(trail.Status)
+		attributes = append(attributes, Status(trail.Status))
 	}
 
-	return exerciseTrail
+	et, _ := diwise.NewExerciseTrail(trail.ID, trail.Name, trail.Length, trail.Description, attributes...)
+	return et
 }
