@@ -16,7 +16,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-//NewDatabaseConnection does not open a new connection ...
 func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient client.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection domain.FeatureCollection) error {
 	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
 
@@ -29,7 +28,7 @@ func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient client.Contex
 					continue
 				}
 
-				fiwareBeach := convertDBBeachToFiwareBeach(*beach)
+				fiwareBeach := convertDomainBeachToFiwareBeach(*beach)
 
 				res, err := ctxBrokerClient.CreateEntity(ctx, fiwareBeach, headers)
 				if err != nil {
@@ -169,7 +168,7 @@ var seeAlsoRefs map[int64]extraInfo = map[int64]extraInfo{
 	1631: {nuts: "SE0712281000003480", sensorID: "sk-elt-temp-20"},
 }
 
-func convertDBBeachToFiwareBeach(b domain.Beach) ngsitypes.Entity {
+func convertDomainBeachToFiwareBeach(b domain.Beach) ngsitypes.Entity {
 
 	properties := []entities.EntityDecoratorFunc{
 		entities.Context([]string{"https://smartdatamodels.org/context.jsonld", "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"}),
