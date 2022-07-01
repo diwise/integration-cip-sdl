@@ -20,10 +20,11 @@ type CityWorkSvc interface {
 	getAndPublishCityWork(ctx context.Context) error
 }
 
-func NewCityWorkService(log zerolog.Logger, s SdlClient, c client.ContextBrokerClient) CityWorkSvc {
+func NewCityWorkService(log zerolog.Logger, s SdlClient, timeInterval int, c client.ContextBrokerClient) CityWorkSvc {
 	return &cw{
 		log:           log,
 		sdlClient:     s,
+		timeInterval:  timeInterval,
 		contextbroker: c,
 	}
 }
@@ -31,6 +32,7 @@ func NewCityWorkService(log zerolog.Logger, s SdlClient, c client.ContextBrokerC
 type cw struct {
 	log           zerolog.Logger
 	sdlClient     SdlClient
+	timeInterval  int
 	contextbroker client.ContextBrokerClient
 }
 
@@ -38,13 +40,12 @@ var previous map[string]string = make(map[string]string)
 
 func (cw *cw) Start(ctx context.Context) error {
 	for {
-		time.Sleep(10 * time.Second)
-
 		err := cw.getAndPublishCityWork(ctx)
 		if err != nil {
-			cw.log.Error().Err(err).Msg("failed to get city work, attempting again in 10 seconds")
+			cw.log.Error().Err(err).Msgf("failed to get city work, attempting again in %d minutes", cw.timeInterval)
 			continue
 		}
+		time.Sleep(time.Duration(cw.timeInterval) * time.Minute)
 	}
 }
 

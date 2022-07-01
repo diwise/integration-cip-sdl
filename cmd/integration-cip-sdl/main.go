@@ -35,7 +35,7 @@ func main() {
 	if featureIsEnabled(logger, "facilities") {
 		facilitiesURL := env.GetVariableOrDie(logger, "FACILITIES_URL", "Facilities URL")
 		facilitiesApiKey := env.GetVariableOrDie(logger, "FACILITIES_API_KEY", "Facilities Api Key")
-		timeInterval := env.GetVariableOrDefault(logger, "FACILITIES_POLLING_INTERVAL", "60")
+		timeInterval := env.GetVariableOrDefault(logger, "FACILITIES_POLLING_INTERVAL", "58")
 
 		parsedTime, err := strconv.ParseInt(timeInterval, 0, 64)
 		if err != nil {
@@ -47,7 +47,14 @@ func main() {
 
 	if featureIsEnabled(logger, "citywork") {
 		sundsvallvaxerURL := env.GetVariableOrDie(logger, "SDL_KARTA_URL", "Sundsvall växer URL")
-		cw := SetupCityWorkService(logger, sundsvallvaxerURL, ctxBroker)
+		timeInterval := env.GetVariableOrDefault(logger, "CITYWORK_POLLING_INTERVAL", "59")
+
+		parsedTime, err := strconv.ParseInt(timeInterval, 0, 64)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("CITYWORK_POLLING_INTERVAL must be set to valid integer")
+		}
+
+		cw := SetupCityWorkService(logger, sundsvallvaxerURL, int(parsedTime), ctxBroker)
 		go cw.Start(ctx)
 	}
 
@@ -71,10 +78,10 @@ func featureIsEnabled(logger zerolog.Logger, feature string) bool {
 	return isEnabled
 }
 
-func SetupCityWorkService(log zerolog.Logger, cityWorkURL string, ctxBroker client.ContextBrokerClient) citywork.CityWorkSvc {
+func SetupCityWorkService(log zerolog.Logger, cityWorkURL string, timeInterval int, ctxBroker client.ContextBrokerClient) citywork.CityWorkSvc {
 	c := citywork.NewSdlClient(cityWorkURL, log)
 
-	return citywork.NewCityWorkService(log, c, ctxBroker)
+	return citywork.NewCityWorkService(log, c, timeInterval, ctxBroker)
 }
 
 func setupRouterAndWaitForConnections(logger zerolog.Logger, port string) {
