@@ -7,8 +7,40 @@ services:
       dockerfile: ./deployments/Dockerfile
     restart: always
     environment:
-      CITYWORK_ENABLED: 'true'
+      CITYWORK_ENABLED: 'false'
       SDL_KARTA_URL: $SDL_KARTA_URL
-      CONTEXT_BROKER_URL: $CONTEXT_BROKER_URL
+      CONTEXT_BROKER_URL: 'http://orion:1026'
+      FACILITIES_ENABLED: 'true'
+      FACILITIES_URL: $FACILITIES_URL
+      FACILITIES_API_KEY: $FACILITIES_API_KEY
+      FACILITIES_POLLING_INTERVAL: $FACILITIES_POLLING_INTERVAL
 
-  
+  orion:
+    image: fiware/orion-ld
+    hostname: orion
+    container_name: fiware-orion
+    depends_on:
+      - mongo-db
+    expose:
+      - "1026"
+    ports:
+      - "1026:1026" 
+    command: -dbhost mongo-db -logLevel DEBUG
+    healthcheck:
+      test: curl --fail -s http://orion:1026/version || exit 1
+
+  # Databases
+  mongo-db:
+    image: mongo:3.6
+    hostname: mongo-db
+    container_name: db-mongo
+    expose:
+      - "27017"
+    ports:
+      - "27017:27017" 
+    command: --nojournal
+    volumes:
+      - mongo-db:/data
+
+volumes:
+  mongo-db: ~

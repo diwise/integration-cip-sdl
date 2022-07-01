@@ -54,20 +54,20 @@ func (c *sdlClient) Get(ctx context.Context) (*sdlResponse, error) {
 
 	apiResponse, err := httpClient.Do(apiReq)
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to retrieve traffic information")
+		log.Error().Err(err).Msg("failed to retrieve traffic information")
 		return nil, err
 	}
+
+	defer apiResponse.Body.Close()
 
 	if apiResponse.StatusCode != http.StatusOK {
 		log.Error().Msgf("failed to retrieve traffic information, expected status code %d, but got %d", http.StatusOK, apiResponse.StatusCode)
 		return nil, fmt.Errorf("expected status code %d, but got %d", http.StatusOK, apiResponse.StatusCode)
 	}
 
-	defer apiResponse.Body.Close()
-
 	body, err := io.ReadAll(apiResponse.Body)
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to read response body")
+		log.Error().Err(err).Msg("failed to read response body")
 		return nil, err
 	}
 
@@ -75,7 +75,7 @@ func (c *sdlClient) Get(ctx context.Context) (*sdlResponse, error) {
 
 	var m sdlResponse
 	err = json.Unmarshal(body, &m)
-	if err != nil {		
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal model")
 	}
 

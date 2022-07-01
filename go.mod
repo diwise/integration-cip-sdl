@@ -3,7 +3,8 @@ module github.com/diwise/integration-cip-sdl
 go 1.18
 
 require (
-	github.com/diwise/service-chassis v0.0.0-20220426150153-706eb92d048e
+	github.com/diwise/context-broker v0.0.0-20220613202823-b87681ea9ea1
+	github.com/diwise/service-chassis v0.0.0-20220602203825-64e6594861be
 	github.com/go-chi/chi v1.5.4
 	github.com/rs/cors v1.8.2
 	github.com/rs/zerolog v1.26.1
@@ -20,7 +21,6 @@ require (
 
 require (
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
-	github.com/diwise/ngsi-ld-golang v0.0.0-20220509072650-254745b49ff6
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

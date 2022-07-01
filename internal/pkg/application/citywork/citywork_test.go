@@ -3,11 +3,14 @@ package citywork
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/diwise/integration-cip-sdl/internal/domain"
+	"github.com/diwise/context-broker/pkg/ngsild"
+	"github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/test"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 )
@@ -16,8 +19,8 @@ func TestSimpleModelCanBeCreated(t *testing.T) {
 	is, _ := testSetup(t, 0, "")
 	m, err := toModel([]byte(simple))
 
-	is.True(m != nil)
 	is.NoErr(err)
+	is.True(m != nil)
 }
 
 func TestComplexModelCanBeCreated(t *testing.T) {
@@ -29,8 +32,8 @@ func TestComplexModelCanBeCreated(t *testing.T) {
 	is.Equal(long, 17.202583472441642)
 	is.Equal(lat, 62.397368375410174)
 
-	is.True(m != nil)
 	is.NoErr(err)
+	is.True(m != nil)
 }
 
 func TestModelCanBeConvertedToCityWork(t *testing.T) {
@@ -39,7 +42,7 @@ func TestModelCanBeConvertedToCityWork(t *testing.T) {
 
 	cw := toCityWorkModel(m.Features[0])
 
-	is.Equal(cw.ID, "urn:ngsi-ld:CityWork:490")
+	is.Equal(cw.ID(), "urn:ngsi-ld:CityWork:490")
 }
 
 func TestThatGetAndPublishWorksWithSimpleResponse(t *testing.T) {
@@ -76,10 +79,10 @@ func testSetup(t *testing.T, statusCode int, body string) (*is.I, CityWorkSvc) {
 	sdlc := sdlClient{
 		sundsvallvaxerURL: s.URL,
 	}
-    
-	ctxBroker := &domain.ContextBrokerClientMock{
-		AddEntityFunc: func(ctx context.Context, entity interface{}) error {
-			return nil
+
+	ctxBroker := &test.ContextBrokerClientMock{
+		CreateEntityFunc: func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
+			return nil, fmt.Errorf("not implemented")
 		},
 	}
 
