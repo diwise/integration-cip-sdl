@@ -171,7 +171,7 @@ var seeAlsoRefs map[int64]extraInfo = map[int64]extraInfo{
 func convertDomainBeachToFiwareBeach(b domain.Beach) ngsitypes.Entity {
 
 	properties := []entities.EntityDecoratorFunc{
-		entities.Context([]string{"https://smartdatamodels.org/context.jsonld", "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"}),
+		entities.DefaultContext(),
 		decorators.Description(b.Description),
 		decorators.LocationMP(b.Geometry.Lines),
 		decorators.DateTimeIfNotZero(properties.DateCreated, b.DateCreated),
