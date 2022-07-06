@@ -178,22 +178,23 @@ func convertDomainBeachToFiwareBeach(b domain.Beach) ngsitypes.Entity {
 		decorators.DateTimeIfNotZero(properties.DateModified, b.DateModified),
 	}
 
-	references := []string{}
-
 	if b.SensorID != nil {
-		references = append(references, fmt.Sprintf("%s%s", fiware.DeviceIDPrefix, *b.SensorID))
+		references := []string{fmt.Sprintf("%s%s", fiware.DeviceIDPrefix, *b.SensorID)}
+		properties = append(properties, decorators.RefSeeAlso(references))
 	}
 
+	seeAlso := []string{}
+
 	if b.NUTSCode != nil {
-		references = append(references, fmt.Sprintf("https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/%s", *b.NUTSCode))
+		seeAlso = append(seeAlso, fmt.Sprintf("https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/%s", *b.NUTSCode))
 	}
 
 	if b.WikidataID != nil {
-		references = append(references, fmt.Sprintf("https://www.wikidata.org/wiki/%s", *b.WikidataID))
+		seeAlso = append(seeAlso, fmt.Sprintf("https://www.wikidata.org/wiki/%s", *b.WikidataID))
 	}
 
-	if len(references) > 0 {
-		properties = append(properties, decorators.RefSeeAlso(references))
+	if len(seeAlso) > 0 {
+		properties = append(properties, decorators.TextList("seeAlso", seeAlso))
 	}
 
 	beach, _ := fiware.NewBeach(b.ID, b.Name, properties...)
