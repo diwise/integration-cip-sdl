@@ -86,7 +86,7 @@ func testSetup(t *testing.T, statusCode int, body string) (*is.I, CityWorkSvc) {
 		},
 	}
 
-	cw := NewCityWorkService(zerolog.Logger{}, &sdlc, ctxBroker)
+	cw := NewCityWorkService(zerolog.Logger{}, &sdlc, 1, ctxBroker)
 
 	return is, cw
 }
