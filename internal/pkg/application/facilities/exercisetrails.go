@@ -24,7 +24,7 @@ func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient client.Context
 
 	for _, feature := range featureCollection.Features {
 		if feature.Properties.Published {
-			if feature.Properties.Type == "Motionsspår" || feature.Properties.Type == "Skidspår" || feature.Properties.Type == "Långfärdsskridskoled" {
+			if feature.Properties.Type == "Motionsspår" || feature.Properties.Type == "Skidspår" || feature.Properties.Type == "Långfärdsskridskoled" || feature.Properties.Type == "Cykelled" {
 				exerciseTrail, err := parsePublishedExerciseTrail(logger, feature)
 				if err != nil {
 					logger.Error().Err(err).Msg("failed to parse motionsspår")
@@ -87,6 +87,8 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 
 	if feature.Properties.Type == "Långfärdsskridskoled" {
 		categories = append(categories, "ice-skating")
+	} else if feature.Properties.Type == "Cykelled" {
+		categories = append(categories, "bike-track")
 	}
 
 	for _, field := range fields {
