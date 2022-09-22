@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -54,7 +55,7 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
 		Name:        feature.Properties.Name,
 		Description: "",
-		Difficulty:  0,
+		Difficulty:  -1,
 	}
 
 	var timeFormat string = "2006-01-02 15:04:05"
@@ -183,8 +184,9 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) ngsitypes.E
 		attributes = append(attributes, Status(trail.Status))
 	}
 
-	if trail.Difficulty >= 0.01 {
-		attributes = append(attributes, Number("difficulty", trail.Difficulty))
+	if trail.Difficulty >= 0 {
+		// Add difficulty rounded to one decimal
+		attributes = append(attributes, Number("difficulty", math.Round(trail.Difficulty*100)/100))
 	}
 
 	et, _ := diwise.NewExerciseTrail(trail.ID, trail.Name, trail.Length, trail.Description, attributes...)
