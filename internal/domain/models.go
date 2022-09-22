@@ -13,7 +13,7 @@ type MultiPolygon struct {
 	Lines [][][][]float64
 }
 
-//Beach contains a point of interest of type Beach
+// Beach contains a point of interest of type Beach
 type Beach struct {
 	ID               string
 	Name             string
@@ -27,7 +27,7 @@ type Beach struct {
 	DateModified     time.Time
 }
 
-//ExerciseTrail contains a point of interest of type ExerciseTrail
+// ExerciseTrail contains a point of interest of type ExerciseTrail
 type ExerciseTrail struct {
 	ID               string
 	Name             string
@@ -41,6 +41,8 @@ type ExerciseTrail struct {
 	DateModified     time.Time
 	DateLastPrepared time.Time
 	Source           string
+	Difficulty       float64
+	PaymentRequired  bool
 }
 
 // ---

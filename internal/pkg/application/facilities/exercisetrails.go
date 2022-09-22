@@ -54,6 +54,7 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
 		Name:        feature.Properties.Name,
 		Description: "",
+		Difficulty:  0,
 	}
 
 	var timeFormat string = "2006-01-02 15:04:05"
@@ -102,6 +103,27 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 			if propertyValueMatches(field, "Ja") {
 				categories = append(categories, "floodlit")
 			}
+		} else if field.ID == 104 {
+			avgift := string(field.Value[1 : len(field.Value)-1])
+			if avgift == "Ja" {
+				trail.PaymentRequired = true
+			} else if avgift != "Nej" {
+				log.Error().Msgf("OKÄND AVGIFTSTEXT: %s !!\n", avgift)
+			}
+		} else if field.ID == 109 {
+			difficulty := map[string]float64{
+				"Mycket lätt": 0,
+				"Lätt":        1,
+				"Medelsvår":   2,
+				"Svår":        3,
+				"Mycket svår": 4,
+			}
+
+			diff, ok := difficulty[string(field.Value[1:len(field.Value)-1])]
+			if !ok {
+				return nil, fmt.Errorf("difficulty level does not match known set")
+			}
+			trail.Difficulty = diff / 4.0
 		} else if field.ID == 110 {
 			trail.Description = string(field.Value[1 : len(field.Value)-1])
 		} else if field.ID == 134 {
@@ -131,12 +153,18 @@ func propertyValueMatches(field domain.FeaturePropField, expectation string) boo
 
 func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) ngsitypes.Entity {
 
+	boolMap := map[bool]string{
+		true:  "yes",
+		false: "no",
+	}
+
 	attributes := append(
-		make([]entities.EntityDecoratorFunc, 0, 8),
+		make([]entities.EntityDecoratorFunc, 0, 10),
 		LocationLS(trail.Geometry.Lines), Description(trail.Description),
 		DateTimeIfNotZero(properties.DateCreated, trail.DateCreated),
 		DateTimeIfNotZero(properties.DateModified, trail.DateModified),
 		DateTimeIfNotZero("dateLastPreparation", trail.DateLastPrepared),
+		Text("paymentRequired", boolMap[trail.PaymentRequired]),
 	)
 
 	if trail.AreaServed != "" {
@@ -153,6 +181,10 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) ngsitypes.E
 
 	if trail.Status != "" {
 		attributes = append(attributes, Status(trail.Status))
+	}
+
+	if trail.Difficulty >= 0.01 {
+		attributes = append(attributes, Number("difficulty", trail.Difficulty))
 	}
 
 	et, _ := diwise.NewExerciseTrail(trail.ID, trail.Name, trail.Length, trail.Description, attributes...)

@@ -11,7 +11,7 @@ import (
 )
 
 func TestBeachesDataLoad(t *testing.T) {
-	is, ctxBrokerMock, server := testSetup(t, http.StatusOK, response)
+	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, response)
 
 	fc := domain.FeatureCollection{}
 	json.Unmarshal([]byte(response), &fc)
