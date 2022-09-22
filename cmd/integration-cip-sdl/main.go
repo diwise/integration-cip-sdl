@@ -112,8 +112,9 @@ func SetupAndRunFacilities(url, apiKey string, timeInterval int, logger zerolog.
 		sleepDuration := time.Duration(timeInterval) * time.Minute
 
 		if err != nil {
-			logger.Error().Err(err).Msg("failed to retrieve facilities information")
-			sleepDuration = time.Duration(2) * time.Minute
+			const retryInterval int = 2
+			logger.Error().Err(err).Msgf("failed to retrieve facilities information (retrying in %d minutes)", retryInterval)
+			sleepDuration = time.Duration(retryInterval) * time.Minute
 		} else {
 			err = facilities.StoreTrailsFromSource(logger, ctxBroker, ctx, url, *features)
 			if err != nil {
