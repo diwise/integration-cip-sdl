@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/diwise/context-broker/pkg/ngsild"
+	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/test"
 	"github.com/diwise/integration-cip-sdl/internal/domain"
@@ -157,6 +158,9 @@ func testSetup(t *testing.T, requestBody string, responseCode int, responseBody 
 	ctxBroker := &test.ContextBrokerClientMock{
 		CreateEntityFunc: func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 			return nil, fmt.Errorf("not implemented")
+		},
+		MergeEntityFunc: func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
+			return nil, ngsierrors.ErrNotFound
 		},
 	}
 

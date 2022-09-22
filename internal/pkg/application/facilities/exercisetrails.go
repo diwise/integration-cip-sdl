@@ -3,6 +3,7 @@ package facilities
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/diwise/context-broker/pkg/datamodels/diwise"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
-	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
+	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
@@ -34,12 +35,29 @@ func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient client.Context
 
 				exerciseTrail.Source = fmt.Sprintf("%s/get/%d", sourceURL, feature.ID)
 
-				fiwareTrail := convertDBTrailToFiwareExerciseTrail(*exerciseTrail)
+				attributes := convertDBTrailToFiwareExerciseTrail(*exerciseTrail)
 
-				_, err = ctxBrokerClient.CreateEntity(ctx, fiwareTrail, headers)
+				fragment, _ := entities.NewFragment(attributes...)
+
+				entityID := diwise.ExerciseTrailIDPrefix + exerciseTrail.ID
+
+				_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
 				if err != nil {
-					logger.Error().Err(err).Msg("failed to post exercise trail to context broker")
-					continue
+					if !errors.Is(err, ngsierrors.ErrNotFound) {
+						logger.Error().Err(err).Msg("failed to merge entity")
+						continue
+					}
+					entity, err := entities.New(entityID, diwise.ExerciseTrailTypeName, attributes...)
+					if err != nil {
+						logger.Error().Err(err).Msg("entities.New failed")
+						continue
+					}
+
+					_, err = ctxBrokerClient.CreateEntity(ctx, entity, headers)
+					if err != nil {
+						logger.Error().Err(err).Msg("failed to post exercise trail to context broker")
+						continue
+					}
 				}
 			}
 		}
@@ -152,7 +170,7 @@ func propertyValueMatches(field domain.FeaturePropField, expectation string) boo
 	return value == expectation || value == ("\""+expectation+"\"")
 }
 
-func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) ngsitypes.Entity {
+func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.EntityDecoratorFunc {
 
 	boolMap := map[bool]string{
 		true:  "yes",
@@ -166,6 +184,9 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) ngsitypes.E
 		DateTimeIfNotZero(properties.DateModified, trail.DateModified),
 		DateTimeIfNotZero("dateLastPreparation", trail.DateLastPrepared),
 		Text("paymentRequired", boolMap[trail.PaymentRequired]),
+		Name(trail.Name),
+		Number("length", trail.Length),
+		Description(trail.Description),
 	)
 
 	if trail.AreaServed != "" {
@@ -189,6 +210,5 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) ngsitypes.E
 		attributes = append(attributes, Number("difficulty", math.Round(trail.Difficulty*100)/100))
 	}
 
-	et, _ := diwise.NewExerciseTrail(trail.ID, trail.Name, trail.Length, trail.Description, attributes...)
-	return et
+	return attributes
 }
