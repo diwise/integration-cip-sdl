@@ -3,12 +3,13 @@ package facilities
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/diwise/context-broker/pkg/datamodels/fiware"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
-	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
+	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
@@ -28,14 +29,32 @@ func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient client.Contex
 					continue
 				}
 
-				fiwareBeach := convertDomainBeachToFiwareBeach(*beach)
+				attributes := convertDomainBeachToFiwareBeach(*beach)
 
-				res, err := ctxBrokerClient.CreateEntity(ctx, fiwareBeach, headers)
+				fragment, _ := entities.NewFragment(attributes...)
+
+				entityID := fiware.BeachIDPrefix + beach.ID
+
+				_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
 				if err != nil {
-					logger.Error().Err(err).Msg("failed to post beach to context broker")
-					continue
+					if !errors.Is(err, ngsierrors.ErrNotFound) {
+						logger.Error().Err(err).Msg("failed to merge entity")
+						continue
+					}
+					entity, err := entities.New(entityID, fiware.BeachTypeName, attributes...)
+					if err != nil {
+						logger.Error().Err(err).Msg("entities.New failed")
+						continue
+					}
+
+					res, err := ctxBrokerClient.CreateEntity(ctx, entity, headers)
+					if err != nil {
+						logger.Error().Err(err).Msg("failed to post beach to context broker")
+						continue
+					}
+
+					logger.Info().Msgf("posted beach %s to context broker", res.Location())
 				}
-				logger.Info().Msgf("posted beach %s to context broker", res.Location())
 			}
 		}
 	}
@@ -168,7 +187,7 @@ var seeAlsoRefs map[int64]extraInfo = map[int64]extraInfo{
 	1631: {nuts: "SE0712281000003480", sensorID: "sk-elt-temp-20"},
 }
 
-func convertDomainBeachToFiwareBeach(b domain.Beach) ngsitypes.Entity {
+func convertDomainBeachToFiwareBeach(b domain.Beach) []entities.EntityDecoratorFunc {
 
 	properties := []entities.EntityDecoratorFunc{
 		entities.DefaultContext(),
@@ -176,6 +195,7 @@ func convertDomainBeachToFiwareBeach(b domain.Beach) ngsitypes.Entity {
 		decorators.LocationMP(b.Geometry.Lines),
 		decorators.DateTimeIfNotZero(properties.DateCreated, b.DateCreated),
 		decorators.DateTimeIfNotZero(properties.DateModified, b.DateModified),
+		decorators.Name(b.Name),
 	}
 
 	if b.SensorID != nil {
@@ -197,7 +217,5 @@ func convertDomainBeachToFiwareBeach(b domain.Beach) ngsitypes.Entity {
 		properties = append(properties, decorators.TextList("seeAlso", seeAlso))
 	}
 
-	beach, _ := fiware.NewBeach(b.ID, b.Name, properties...)
-
-	return beach
+	return properties
 }
