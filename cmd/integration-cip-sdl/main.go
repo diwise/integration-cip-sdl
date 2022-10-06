@@ -63,8 +63,9 @@ func main() {
 	setupRouterAndWaitForConnections(logger, port)
 }
 
-//featureIsEnabled checks wether a given feature is enabled by exanding the feature name into <uppercase>_ENABLED and checking if the corresponding environment variable is set to true.
-//  Ex: citywork -> CITYWORK_ENABLED
+// featureIsEnabled checks wether a given feature is enabled by exanding the feature name into <uppercase>_ENABLED and checking if the corresponding environment variable is set to true.
+//
+//	Ex: citywork -> CITYWORK_ENABLED
 func featureIsEnabled(logger zerolog.Logger, feature string) bool {
 	featureKey := fmt.Sprintf("%s_ENABLED", strings.ToUpper(feature))
 	isEnabled := os.Getenv(featureKey) == "true"
@@ -108,8 +109,12 @@ func SetupAndRunFacilities(url, apiKey string, timeInterval int, logger zerolog.
 
 	for {
 		features, err := fc.Get(ctx)
+		sleepDuration := time.Duration(timeInterval) * time.Minute
+
 		if err != nil {
-			logger.Error().Err(err).Msg("failed to retrieve facilities information")
+			const retryInterval int = 2
+			logger.Error().Err(err).Msgf("failed to retrieve facilities information (retrying in %d minutes)", retryInterval)
+			sleepDuration = time.Duration(retryInterval) * time.Minute
 		} else {
 			err = facilities.StoreTrailsFromSource(logger, ctxBroker, ctx, url, *features)
 			if err != nil {
@@ -121,7 +126,6 @@ func SetupAndRunFacilities(url, apiKey string, timeInterval int, logger zerolog.
 			}
 		}
 
-		time.Sleep(time.Duration(timeInterval) * time.Minute)
-
+		time.Sleep(sleepDuration)
 	}
 }

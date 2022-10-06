@@ -41,11 +41,15 @@ var previous map[string]string = make(map[string]string)
 func (cw *cw) Start(ctx context.Context) error {
 	for {
 		err := cw.getAndPublishCityWork(ctx)
+		sleepDuration := time.Duration(cw.timeInterval) * time.Minute
+
 		if err != nil {
-			cw.log.Error().Err(err).Msgf("failed to get city work, attempting again in %d minutes", cw.timeInterval)
-			continue
+			const retryIntervalMinutes int = 2
+			cw.log.Error().Err(err).Msgf("failed to get city work, attempting again in %d minutes", retryIntervalMinutes)
+			sleepDuration = time.Duration(retryIntervalMinutes) * time.Minute
 		}
-		time.Sleep(time.Duration(cw.timeInterval) * time.Minute)
+
+		time.Sleep(sleepDuration)
 	}
 }
 
