@@ -124,10 +124,10 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 			}
 		} else if field.ID == 104 {
 			avgift := string(field.Value[1 : len(field.Value)-1])
-			if avgift == "Ja" {
+			if avgift != "Nej" {
 				trail.PaymentRequired = true
-			} else if avgift != "Nej" {
-				log.Error().Msgf("OKÄND AVGIFTSTEXT: %s !!\n", avgift)
+			} else {
+				trail.PaymentRequired = false
 			}
 		} else if field.ID == 109 {
 			difficulty := map[string]float64{

@@ -129,7 +129,7 @@ func TestExerciseTrail(t *testing.T) {
 	entityJSON, _ := json.Marshal(e)
 
 	const difficulty string = `"difficulty":{"type":"Property","value":0.5}`
-	const payment string = `"paymentRequired":{"type":"Property","value":"no"}`
+	const payment string = `"paymentRequired":{"type":"Property","value":"yes"}`
 
 	is.True(strings.Contains(string(entityJSON), difficulty))
 	is.True(strings.Contains(string(entityJSON), payment))
