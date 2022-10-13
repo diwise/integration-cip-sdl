@@ -71,11 +71,6 @@ type FeatureProps struct {
 	Updated   *string         `json:"updated,omitempty"`
 }
 
-type ValueArray struct {
-	Type string `json:"type"`
-	URL  string `json:"url"`
-}
-
 type Feature struct {
 	ID         int64        `json:"id"`
 	Properties FeatureProps `json:"properties"`

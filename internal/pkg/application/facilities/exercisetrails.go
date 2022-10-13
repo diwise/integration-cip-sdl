@@ -146,17 +146,21 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 		} else if field.ID == 110 {
 			trail.Description = string(field.Value[1 : len(field.Value)-1])
 		} else if field.ID == 113 {
-			mapURLS := []domain.ValueArray{}
+			fileInfo := []struct {
+				Type string `json:"type"`
+				URL  string `json:"url"`
+			}{}
 
-			err := json.Unmarshal(field.Value, &mapURLS)
+			err := json.Unmarshal(field.Value, &fileInfo)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal url")
 			}
 
-			for _, v := range mapURLS {
-				if v.Type == "application/pdf" {
-					trail.MapURL = v.URL
-				}
+			for _, f := range fileInfo {
+				if f.Type == "application/pdf" {
+					trail.MapURL = f.URL
+				} // we retrieve the URL for the map file here,
+				// but this is not being used anywhere at present
 			}
 
 		} else if field.ID == 134 {
@@ -222,10 +226,6 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 	if trail.Difficulty >= 0 {
 		// Add difficulty rounded to one decimal
 		attributes = append(attributes, Number("difficulty", math.Round(trail.Difficulty*100)/100))
-	}
-
-	if trail.MapURL != "" {
-		attributes = append(attributes, Text("mapURL", trail.MapURL))
 	}
 
 	return attributes

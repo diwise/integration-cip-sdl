@@ -152,11 +152,9 @@ func TestExerciseTrail(t *testing.T) {
 
 	const difficulty string = `"difficulty":{"type":"Property","value":0.5}`
 	const payment string = `"paymentRequired":{"type":"Property","value":"yes"}`
-	const mapURL string = `"mapURL":{"type":"Property","value":"https://anlaggning.sundsvall.se/filesfield/api/498"}`
 
 	is.True(strings.Contains(string(entityJSON), difficulty))
 	is.True(strings.Contains(string(entityJSON), payment))
-	is.True(strings.Contains(string(entityJSON), mapURL))
 }
 
 func setupMockServiceThatReturns(is *is.I, expectedRequestBody string, responseCode int, body string) *httptest.Server {
