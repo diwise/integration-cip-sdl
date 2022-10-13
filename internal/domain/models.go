@@ -43,6 +43,7 @@ type ExerciseTrail struct {
 	Source           string
 	Difficulty       float64
 	PaymentRequired  bool
+	MapURL           string
 }
 
 // ---

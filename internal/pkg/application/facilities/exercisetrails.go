@@ -145,6 +145,24 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 			trail.Difficulty = diff / 4.0
 		} else if field.ID == 110 {
 			trail.Description = string(field.Value[1 : len(field.Value)-1])
+		} else if field.ID == 113 {
+			fileInfo := []struct {
+				Type string `json:"type"`
+				URL  string `json:"url"`
+			}{}
+
+			err := json.Unmarshal(field.Value, &fileInfo)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal url")
+			}
+
+			for _, f := range fileInfo {
+				if f.Type == "application/pdf" {
+					trail.MapURL = f.URL
+				} // we retrieve the URL for the map file here,
+				// but this is not being used anywhere at present
+			}
+
 		} else if field.ID == 134 {
 			trail.AreaServed = string(field.Value[1 : len(field.Value)-1])
 		} else if field.ID == 248 || field.ID == 250 {
