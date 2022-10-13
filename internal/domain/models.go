@@ -43,6 +43,7 @@ type ExerciseTrail struct {
 	Source           string
 	Difficulty       float64
 	PaymentRequired  bool
+	MapURL           string
 }
 
 // ---
@@ -68,6 +69,11 @@ type FeatureProps struct {
 	Fields    json.RawMessage `json:"fields"`
 	Created   *string         `json:"created,omitempty"`
 	Updated   *string         `json:"updated,omitempty"`
+}
+
+type ValueArray struct {
+	Type string `json:"type"`
+	URL  string `json:"url"`
 }
 
 type Feature struct {
