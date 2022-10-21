@@ -119,6 +119,14 @@ func parsePublishedSportsField(log zerolog.Logger, feature domain.Feature) (*dom
 			if propertyValueMatches(field, "Ja") {
 				isIceRink = true
 				ignoreThisField = false
+
+				if field.ID == 137 {
+					categories = append(categories, "skating")
+				} else if field.ID == 138 {
+					categories = append(categories, "hockey")
+				} else if field.ID == 139 {
+					categories = append(categories, "bandy")
+				}
 			}
 		}
 	}
