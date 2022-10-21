@@ -124,6 +124,10 @@ func SetupAndRunFacilities(url, apiKey string, timeInterval int, logger zerolog.
 			if err != nil {
 				logger.Error().Err(err).Msg("failed to store beaches information")
 			}
+			err = facilities.StoreSportsFieldsFromSource(logger, ctxBroker, ctx, url, *features)
+			if err != nil {
+				logger.Error().Err(err).Msg("failed to store sports fields information")
+			}
 		}
 
 		time.Sleep(sleepDuration)

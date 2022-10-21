@@ -56,6 +56,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/diwise/context-broker v0.0.0-20220831115735-f90c729132c6 h1:wXpWfb69pFQG54egfkmxEnAqXJtzpEqBdfO6Binz38c=
 github.com/diwise/context-broker v0.0.0-20220831115735-f90c729132c6/go.mod h1:NULu6C6XjtP6a3Ofet0Uqjlefli4yw02Ucqji+MlbhE=
+github.com/diwise/context-broker v0.0.0-20221021093647-f6c30c32fae0 h1:YTnxG2bPFFklGq4cID3ypN3lB1PP/L5PIZwySbDHw0I=
+github.com/diwise/context-broker v0.0.0-20221021093647-f6c30c32fae0/go.mod h1:NULu6C6XjtP6a3Ofet0Uqjlefli4yw02Ucqji+MlbhE=
 github.com/diwise/service-chassis v0.0.0-20220609153321-22f72f7f5e21 h1:slCX3+Ni152fJdkiyGe2sjxzu9TvClfmQZ3JV+lXFmQ=
 github.com/diwise/service-chassis v0.0.0-20220609153321-22f72f7f5e21/go.mod h1:qx+MPhTkgmRCAAaqX66aaglFZHMA8/JoAHbT4dYJuGA=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
