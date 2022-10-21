@@ -45,6 +45,19 @@ type ExerciseTrail struct {
 	PaymentRequired  bool
 }
 
+// SportsField contains a point of interest of type SportsField
+type SportsField struct {
+	ID               string
+	Name             string
+	Description      string
+	Category         []string
+	Geometry         MultiPolygon
+	DateCreated      time.Time
+	DateModified     time.Time
+	DateLastPrepared time.Time
+	Source           string
+}
+
 // ---
 
 const (

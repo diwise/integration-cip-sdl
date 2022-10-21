@@ -3,7 +3,7 @@ module github.com/diwise/integration-cip-sdl
 go 1.18
 
 require (
-	github.com/diwise/context-broker v0.0.0-20220831115735-f90c729132c6
+	github.com/diwise/context-broker v0.0.0-20221021093647-f6c30c32fae0
 	github.com/diwise/service-chassis v0.0.0-20220609153321-22f72f7f5e21
 	github.com/go-chi/chi v1.5.4
 	github.com/rs/cors v1.8.2
