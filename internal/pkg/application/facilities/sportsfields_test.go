@@ -32,6 +32,7 @@ func TestSportsFieldLoad(t *testing.T) {
 func TestSportsField(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, sportsFieldResponse)
 
+	// Replace default failing CreateEntityFunc with a noop, so we can fetch the entity argument in the assert phase
 	ctxBrokerMock.CreateEntityFunc = func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 		return &ngsild.CreateEntityResult{}, nil
 	}
@@ -44,11 +45,10 @@ func TestSportsField(t *testing.T) {
 	err = StoreSportsFieldsFromSource(zerolog.Logger{}, ctxBrokerMock, context.Background(), server.URL, *featureCollection)
 	is.NoErr(err)
 
-	is.Equal(len(ctxBrokerMock.MergeEntityCalls()), 1)
-	e := ctxBrokerMock.MergeEntityCalls()[0].Fragment
+	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
+	e := ctxBrokerMock.CreateEntityCalls()[0].Entity
 	entityJSON, _ := json.Marshal(e)
 
 	const categories string = `"category":{"type":"Property","value":["skating","floodlit","ice-rink"]}`
-
 	is.True(strings.Contains(string(entityJSON), categories))
 }
