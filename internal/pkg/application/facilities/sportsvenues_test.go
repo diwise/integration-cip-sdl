@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/diwise/context-broker/pkg/ngsild"
@@ -48,7 +49,6 @@ func TestSportsVenue(t *testing.T) {
 	e := ctxBrokerMock.CreateEntityCalls()[0].Entity
 	entityJSON, _ := json.Marshal(e)
 
-	//const categories string = `"category":{"type":"Property","value":["skating","floodlit","ice-rink"]}`
-	//is.True(strings.Contains(string(entityJSON), categories))
-	is.Equal(string(entityJSON), "no")
+	const name string = `"name":{"type":"Property","value":"Stora ishallen"}`
+	is.True(strings.Contains(string(entityJSON), name))
 }
