@@ -58,6 +58,19 @@ type SportsField struct {
 	Source           string
 }
 
+// SportsVenue contains a point of interest of type SportsVenue
+type SportsVenue struct {
+	ID           string
+	Name         string
+	Description  string
+	Category     []string
+	Geometry     MultiPolygon
+	DateCreated  time.Time
+	DateModified time.Time
+	Source       string
+	SeeAlso      []string
+}
+
 // ---
 
 const (
