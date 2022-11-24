@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -18,30 +19,34 @@ import (
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 )
 
-var ErrSportsFieldIsOfIgnoredType error = errors.New("sportsfield is of non supported type")
+var ErrSportsVenueIsOfIgnoredType error = errors.New("sports venue is of non supported type")
 
-func StoreSportsFieldsFromSource(logger zerolog.Logger, ctxBrokerClient client.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection domain.FeatureCollection) error {
+func StoreSportsVenuesFromSource(logger zerolog.Logger, ctxBrokerClient client.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection domain.FeatureCollection) error {
 
 	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
 
+	isSupportedType := func(t string) bool {
+		return t == "Badhus" || t == "Ishall" || t == "Sporthall"
+	}
+
 	for _, feature := range featureCollection.Features {
 		if feature.Properties.Published {
-			if feature.Properties.Type == "Aktivitetsyta" {
-				sportsField, err := parsePublishedSportsField(logger, feature)
+			if isSupportedType(feature.Properties.Type) {
+				sportsVenue, err := parsePublishedSportsVenue(logger, feature)
 				if err != nil {
-					if !errors.Is(err, ErrSportsFieldIsOfIgnoredType) {
-						logger.Error().Err(err).Msg("failed to parse aktivitetsyta")
+					if !errors.Is(err, ErrSportsVenueIsOfIgnoredType) {
+						logger.Error().Err(err).Msg("failed to parse feature")
 					}
 					continue
 				}
 
-				sportsField.Source = fmt.Sprintf("%s/get/%d", sourceURL, feature.ID)
+				sportsVenue.Source = fmt.Sprintf("%s/get/%d", sourceURL, feature.ID)
 
-				attributes := convertDBSportsFieldToFiwareSportsField(*sportsField)
+				attributes := convertDBSportsVenueToFiwareSportsVenue(*sportsVenue)
 
 				fragment, _ := entities.NewFragment(attributes...)
 
-				entityID := diwise.SportsFieldIDPrefix + sportsField.ID
+				entityID := diwise.SportsVenueIDPrefix + sportsVenue.ID
 
 				_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
 				if err != nil {
@@ -49,7 +54,7 @@ func StoreSportsFieldsFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 						logger.Error().Err(err).Msg("failed to merge entity")
 						continue
 					}
-					entity, err := entities.New(entityID, diwise.SportsFieldTypeName, attributes...)
+					entity, err := entities.New(entityID, diwise.SportsVenueTypeName, attributes...)
 					if err != nil {
 						logger.Error().Err(err).Msg("entities.New failed")
 						continue
@@ -57,7 +62,7 @@ func StoreSportsFieldsFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 
 					_, err = ctxBrokerClient.CreateEntity(ctx, entity, headers)
 					if err != nil {
-						logger.Error().Err(err).Msg("failed to post sports field to context broker")
+						logger.Error().Err(err).Msg("failed to post sports venue to context broker")
 						continue
 					}
 				}
@@ -68,10 +73,10 @@ func StoreSportsFieldsFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 	return nil
 }
 
-func parsePublishedSportsField(log zerolog.Logger, feature domain.Feature) (*domain.SportsField, error) {
-	log.Info().Msgf("found published sports field %d %s", feature.ID, feature.Properties.Name)
+func parsePublishedSportsVenue(log zerolog.Logger, feature domain.Feature) (*domain.SportsVenue, error) {
+	log.Info().Msgf("found published sports venue %d %s", feature.ID, feature.Properties.Name)
 
-	sportsField := &domain.SportsField{
+	sportsVenue := &domain.SportsVenue{
 		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
 		Name:        feature.Properties.Name,
 		Description: "",
@@ -82,18 +87,18 @@ func parsePublishedSportsField(log zerolog.Logger, feature domain.Feature) (*dom
 	if feature.Properties.Created != nil {
 		created, err := time.Parse(timeFormat, *feature.Properties.Created)
 		if err == nil {
-			sportsField.DateCreated = created.UTC()
+			sportsVenue.DateCreated = created.UTC()
 		}
 	}
 
 	if feature.Properties.Updated != nil {
 		modified, err := time.Parse(timeFormat, *feature.Properties.Updated)
 		if err == nil {
-			sportsField.DateModified = modified.UTC()
+			sportsVenue.DateModified = modified.UTC()
 		}
 	}
 
-	err := json.Unmarshal(feature.Geometry.Coordinates, &sportsField.Geometry.Lines)
+	err := json.Unmarshal(feature.Geometry.Coordinates, &sportsVenue.Geometry.Lines)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal geometry %s: %s", string(feature.Geometry.Coordinates), err.Error())
 	}
@@ -104,58 +109,40 @@ func parsePublishedSportsField(log zerolog.Logger, feature domain.Feature) (*dom
 		return nil, fmt.Errorf("failed to unmarshal property fields %s: %s", string(feature.Properties.Fields), err.Error())
 	}
 
-	categories := []string{}
-	var ignoreThisField bool = true
-	var isIceRink bool = false
-
 	for _, field := range fields {
-		if field.ID == 279 {
-			if propertyValueMatches(field, "Ja") {
-				categories = append(categories, "floodlit")
-			}
-		} else if field.ID == 1 {
-			sportsField.Description = string(field.Value[1 : len(field.Value)-1])
-		} else if field.ID == 137 || field.ID == 138 || field.ID == 139 {
-			if propertyValueMatches(field, "Ja") {
-				isIceRink = true
-				ignoreThisField = false
-
-				if field.ID == 137 {
-					categories = append(categories, "skating")
-				} else if field.ID == 138 {
-					categories = append(categories, "hockey")
-				} else if field.ID == 139 {
-					categories = append(categories, "bandy")
-				}
-			}
+		if field.ID == 78 {
+			sportsVenue.Description = string(field.Value[1 : len(field.Value)-1])
+		} else if field.ID == 151 {
+			url := string(field.Value[1 : len(field.Value)-1])
+			url = strings.ReplaceAll(url, "\\/", "/")
+			sportsVenue.SeeAlso = []string{url}
 		}
 	}
 
-	if ignoreThisField {
-		return nil, ErrSportsFieldIsOfIgnoredType
+	supportedCategories := map[string][]string{
+		"Badhus":    {"swimming-pool"},
+		"Ishall":    {"ice-rink"},
+		"Sporthall": {"sports-hall"},
 	}
 
-	if isIceRink {
-		categories = append(categories, "ice-rink")
+	categories, ok := supportedCategories[feature.Properties.Type]
+	if ok {
+		sportsVenue.Category = categories
 	}
 
-	if len(categories) > 0 {
-		sportsField.Category = categories
-	}
-
-	return sportsField, nil
+	return sportsVenue, nil
 }
 
-func convertDBSportsFieldToFiwareSportsField(field domain.SportsField) []entities.EntityDecoratorFunc {
+func convertDBSportsVenueToFiwareSportsVenue(field domain.SportsVenue) []entities.EntityDecoratorFunc {
 
 	attributes := append(
 		make([]entities.EntityDecoratorFunc, 0, 7),
 		LocationMP(field.Geometry.Lines), Description(field.Description),
 		DateTimeIfNotZero(properties.DateCreated, field.DateCreated),
 		DateTimeIfNotZero(properties.DateModified, field.DateModified),
-		DateTimeIfNotZero("dateLastPreparation", field.DateLastPrepared),
 		Name(field.Name),
 		Description(field.Description),
+		TextList("seeAlso", field.SeeAlso),
 	)
 
 	if len(field.Category) > 0 {
