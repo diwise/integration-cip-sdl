@@ -119,11 +119,10 @@ func parsePublishedSportsVenue(log zerolog.Logger, feature domain.Feature) (*dom
 		}
 	}
 
-	// TODO: Fix these
 	supportedCategories := map[string][]string{
-		"Badhus":    {"swimming"},
+		"Badhus":    {"swimming-pool"},
 		"Ishall":    {"ice-rink"},
-		"Sporthall": {"sports"},
+		"Sporthall": {"sports-hall"},
 	}
 
 	categories, ok := supportedCategories[feature.Properties.Type]
