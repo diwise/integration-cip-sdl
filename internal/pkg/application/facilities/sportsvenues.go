@@ -35,7 +35,7 @@ func StoreSportsVenuesFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 				sportsVenue, err := parsePublishedSportsVenue(logger, feature)
 				if err != nil {
 					if !errors.Is(err, ErrSportsVenueIsOfIgnoredType) {
-						logger.Error().Err(err).Msg("failed to parse ishall")
+						logger.Error().Err(err).Msg("failed to parse feature")
 					}
 					continue
 				}
