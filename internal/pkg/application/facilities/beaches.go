@@ -13,7 +13,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
-	"github.com/diwise/integration-cip-sdl/internal/domain"
+	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 	"github.com/rs/zerolog"
 )
 

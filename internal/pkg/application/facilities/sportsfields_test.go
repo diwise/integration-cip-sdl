@@ -9,7 +9,7 @@ import (
 
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
-	"github.com/diwise/integration-cip-sdl/internal/domain"
+	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
