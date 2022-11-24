@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/diwise/integration-cip-sdl/internal/domain"
+	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 	"github.com/rs/zerolog/log"
 )
 

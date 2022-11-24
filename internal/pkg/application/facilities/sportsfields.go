@@ -15,7 +15,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
-	"github.com/diwise/integration-cip-sdl/internal/domain"
+	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 )
 
 var ErrSportsFieldIsOfIgnoredType error = errors.New("sportsfield is of non supported type")
