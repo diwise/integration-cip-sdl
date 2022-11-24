@@ -62,7 +62,7 @@ func StoreSportsVenuesFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 
 					_, err = ctxBrokerClient.CreateEntity(ctx, entity, headers)
 					if err != nil {
-						logger.Error().Err(err).Msg("failed to post sports field to context broker")
+						logger.Error().Err(err).Msg("failed to post sports venue to context broker")
 						continue
 					}
 				}
