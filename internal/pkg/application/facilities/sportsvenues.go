@@ -19,7 +19,7 @@ import (
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 )
 
-var ErrSportsVenueIsOfIgnoredType error = errors.New("sportsvenue is of non supported type")
+var ErrSportsVenueIsOfIgnoredType error = errors.New("sports venue is of non supported type")
 
 func StoreSportsVenuesFromSource(logger zerolog.Logger, ctxBrokerClient client.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection domain.FeatureCollection) error {
 
