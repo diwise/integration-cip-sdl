@@ -109,6 +109,8 @@ func parsePublishedSportsVenue(log zerolog.Logger, feature domain.Feature) (*dom
 		return nil, fmt.Errorf("failed to unmarshal property fields %s: %s", string(feature.Properties.Fields), err.Error())
 	}
 
+	sportsVenue.SeeAlso = []string{}
+
 	for _, field := range fields {
 		if field.ID == 78 {
 			sportsVenue.Description = string(field.Value[1 : len(field.Value)-1])
@@ -147,9 +149,7 @@ func convertDBSportsVenueToFiwareSportsVenue(field domain.SportsVenue) []entitie
 		attributes = append(attributes, TextList("category", field.Category))
 	}
 
-	if len(field.SeeAlso) > 0 {
-		attributes = append(attributes, TextList("seeAlso", field.SeeAlso))
-	}
+	attributes = append(attributes, TextList("seeAlso", field.SeeAlso))
 
 	if field.Source != "" {
 		attributes = append(attributes, Source(field.Source))
