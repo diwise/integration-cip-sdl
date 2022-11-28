@@ -136,17 +136,19 @@ func parsePublishedSportsVenue(log zerolog.Logger, feature domain.Feature) (*dom
 func convertDBSportsVenueToFiwareSportsVenue(field domain.SportsVenue) []entities.EntityDecoratorFunc {
 
 	attributes := append(
-		make([]entities.EntityDecoratorFunc, 0, 7),
-		LocationMP(field.Geometry.Lines), Description(field.Description),
+		make([]entities.EntityDecoratorFunc, 0, 8),
+		Name(field.Name), Description(field.Description),
+		LocationMP(field.Geometry.Lines),
 		DateTimeIfNotZero(properties.DateCreated, field.DateCreated),
 		DateTimeIfNotZero(properties.DateModified, field.DateModified),
-		Name(field.Name),
-		Description(field.Description),
-		TextList("seeAlso", field.SeeAlso),
 	)
 
 	if len(field.Category) > 0 {
 		attributes = append(attributes, TextList("category", field.Category))
+	}
+
+	if len(field.SeeAlso) > 0 {
+		attributes = append(attributes, TextList("seeAlso", field.SeeAlso))
 	}
 
 	if field.Source != "" {
