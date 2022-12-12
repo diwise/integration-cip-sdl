@@ -43,6 +43,7 @@ type ExerciseTrail struct {
 	Source           string
 	Difficulty       float64
 	PaymentRequired  bool
+	Manager          string
 }
 
 // SportsField contains a point of interest of type SportsField
@@ -56,6 +57,7 @@ type SportsField struct {
 	DateModified     time.Time
 	DateLastPrepared time.Time
 	Source           string
+	Manager          string
 }
 
 // SportsVenue contains a point of interest of type SportsVenue
@@ -69,6 +71,7 @@ type SportsVenue struct {
 	DateModified time.Time
 	Source       string
 	SeeAlso      []string
+	Manager      string
 }
 
 // ---
@@ -87,9 +90,15 @@ type FeaturePropField struct {
 	Value json.RawMessage `json:"value"`
 }
 
+type FeatureManagerField struct {
+	OrganisationID int    `json:"organisationID"`
+	Name           string `json:"name"`
+}
+
 type FeatureProps struct {
 	Name      string          `json:"name"`
 	Type      string          `json:"type"`
+	Manager   json.RawMessage `json:"manager"`
 	Published bool            `json:"published"`
 	Fields    json.RawMessage `json:"fields"`
 	Created   *string         `json:"created,omitempty"`

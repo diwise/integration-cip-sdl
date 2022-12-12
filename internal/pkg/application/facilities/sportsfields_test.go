@@ -3,6 +3,7 @@ package facilities
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -51,4 +52,29 @@ func TestSportsField(t *testing.T) {
 
 	const categories string = `"category":{"type":"Property","value":["skating","floodlit","ice-rink"]}`
 	is.True(strings.Contains(string(entityJSON), categories))
+}
+
+func TestSportsFieldHasManagerProperty(t *testing.T) {
+	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, sportsFieldResponse)
+
+	// Replace default failing CreateEntityFunc with a noop, so we can fetch the entity argument in the assert phase
+	ctxBrokerMock.CreateEntityFunc = func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
+		return &ngsild.CreateEntityResult{}, nil
+	}
+
+	client := NewClient("apiKey", server.URL, zerolog.Logger{})
+
+	featureCollection, err := client.Get(context.Background())
+	is.NoErr(err)
+
+	err = StoreSportsFieldsFromSource(zerolog.Logger{}, ctxBrokerMock, context.Background(), server.URL, *featureCollection)
+	is.NoErr(err)
+
+	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
+	e := ctxBrokerMock.CreateEntityCalls()[0].Entity
+	entityJSON, _ := json.Marshal(e)
+
+	const manager string = `"manager":{"type":"Property","value":"sundsvalls kommun idrott och fritid"}`
+	fmt.Printf("entity: %s", string(entityJSON))
+	is.True(strings.Contains(string(entityJSON), manager))
 }
