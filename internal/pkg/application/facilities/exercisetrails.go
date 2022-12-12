@@ -97,6 +97,16 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 		return nil, fmt.Errorf("failed to unmarshal geometry %s: %s", string(feature.Geometry.Coordinates), err.Error())
 	}
 
+	manager := domain.FeatureManagerField{}
+	err = json.Unmarshal(feature.Properties.Manager, &manager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal manager %s: %s", string(feature.Properties.Manager), err.Error())
+	}
+
+	if manager.Name != "" {
+		trail.Manager = manager.Name
+	}
+
 	fields := []domain.FeaturePropField{}
 	err = json.Unmarshal(feature.Properties.Fields, &fields)
 	if err != nil {
@@ -203,6 +213,10 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 
 	if trail.Status != "" {
 		attributes = append(attributes, Status(trail.Status))
+	}
+
+	if trail.Manager != "" {
+		attributes = append(attributes, Text("manager", trail.Manager))
 	}
 
 	if trail.Difficulty >= 0 {

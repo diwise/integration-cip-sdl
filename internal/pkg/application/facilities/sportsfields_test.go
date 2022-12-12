@@ -3,7 +3,6 @@ package facilities
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -75,6 +74,5 @@ func TestSportsFieldHasManagerProperty(t *testing.T) {
 	entityJSON, _ := json.Marshal(e)
 
 	const manager string = `"manager":{"type":"Property","value":"sundsvalls kommun idrott och fritid"}`
-	fmt.Printf("entity: %s", string(entityJSON))
 	is.True(strings.Contains(string(entityJSON), manager))
 }

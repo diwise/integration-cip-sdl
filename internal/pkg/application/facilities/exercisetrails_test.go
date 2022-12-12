@@ -135,6 +135,29 @@ func TestExerciseTrail(t *testing.T) {
 	is.True(strings.Contains(string(entityJSON), payment))
 }
 
+func TestExerciseTrailContainsManagerProperty(t *testing.T) {
+	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, response)
+
+	ctxBrokerMock.CreateEntityFunc = func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
+		return &ngsild.CreateEntityResult{}, nil
+	}
+
+	client := NewClient("apiKey", server.URL, zerolog.Logger{})
+
+	featureCollection, err := client.Get(context.Background())
+	is.NoErr(err)
+
+	err = StoreTrailsFromSource(zerolog.Logger{}, ctxBrokerMock, context.Background(), server.URL, *featureCollection)
+	is.NoErr(err)
+
+	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 2)
+	e := ctxBrokerMock.CreateEntityCalls()[0].Entity
+	entityJSON, _ := json.Marshal(e)
+
+	const manager string = `"manager":{"type":"Property","value":"Sundsvalls kommun Friluftsenheten"}`
+	is.True(strings.Contains(string(entityJSON), manager))
+}
+
 func setupMockServiceThatReturns(is *is.I, expectedRequestBody string, responseCode int, body string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if expectedRequestBody != "" {
