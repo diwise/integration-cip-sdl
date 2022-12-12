@@ -51,6 +51,7 @@ type SportsField struct {
 	Name             string
 	Description      string
 	Category         []string
+	PublicAccess     string
 	Geometry         MultiPolygon
 	DateCreated      time.Time
 	DateModified     time.Time
