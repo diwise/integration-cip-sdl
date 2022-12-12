@@ -103,6 +103,16 @@ func parsePublishedSportsVenue(log zerolog.Logger, feature domain.Feature) (*dom
 		return nil, fmt.Errorf("failed to unmarshal geometry %s: %s", string(feature.Geometry.Coordinates), err.Error())
 	}
 
+	manager := domain.FeatureManagerField{}
+	err = json.Unmarshal(feature.Properties.Manager, &manager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal manager %s: %s", string(feature.Properties.Manager), err.Error())
+	}
+
+	if manager.Name != "" {
+		sportsVenue.Manager = manager.Name
+	}
+
 	fields := []domain.FeaturePropField{}
 	err = json.Unmarshal(feature.Properties.Fields, &fields)
 	if err != nil {
@@ -147,6 +157,10 @@ func convertDBSportsVenueToFiwareSportsVenue(field domain.SportsVenue) []entitie
 
 	if len(field.Category) > 0 {
 		attributes = append(attributes, TextList("category", field.Category))
+	}
+
+	if field.Manager != "" {
+		attributes = append(attributes, Text("manager", field.Manager))
 	}
 
 	attributes = append(attributes, TextList("seeAlso", field.SeeAlso))
