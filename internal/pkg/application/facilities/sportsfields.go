@@ -43,8 +43,11 @@ func StoreSportsFieldsFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 				fragment, _ := entities.NewFragment(attributes...)
 
 				entityID := diwise.SportsFieldIDPrefix + sportsField.ID
-
 				_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
+
+				// Throttle so we dont kill the broker
+				time.Sleep(500 * time.Millisecond)
+
 				if err != nil {
 					if !errors.Is(err, ngsierrors.ErrNotFound) {
 						logger.Error().Err(err).Msg("failed to merge entity")
