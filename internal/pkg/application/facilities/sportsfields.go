@@ -100,11 +100,11 @@ func parsePublishedSportsField(log zerolog.Logger, feature domain.Feature) (*dom
 	}
 
 	if feature.Properties.Manager != nil {
-		sportsField.ManagedBy = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:%d", feature.Properties.Manager.OrganisationID)
+		sportsField.ManagedBy = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:facilities:org:%d", feature.Properties.Manager.OrganisationID)
 	}
 
 	if feature.Properties.Owner != nil {
-		sportsField.Owner = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:%d", feature.Properties.Owner.OrganisationID)
+		sportsField.Owner = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:facilities:org:%d", feature.Properties.Owner.OrganisationID)
 	}
 
 	fields := []domain.FeaturePropField{}

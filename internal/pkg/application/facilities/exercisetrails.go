@@ -99,11 +99,11 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 	}
 
 	if feature.Properties.Manager != nil {
-		trail.ManagedBy = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:%d", feature.Properties.Manager.OrganisationID)
+		trail.ManagedBy = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:facilities:org:%d", feature.Properties.Manager.OrganisationID)
 	}
 
 	if feature.Properties.Owner != nil {
-		trail.Owner = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:%d", feature.Properties.Owner.OrganisationID)
+		trail.Owner = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:facilities:org:%d", feature.Properties.Owner.OrganisationID)
 	}
 
 	fields := []domain.FeaturePropField{}

@@ -154,8 +154,8 @@ func TestExerciseTrailContainsManagedByAndOwnerProperties(t *testing.T) {
 	e := ctxBrokerMock.CreateEntityCalls()[0].Entity
 	entityJSON, _ := json.Marshal(e)
 
-	const manager string = `"managedBy":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:88"}`
-	const owner string = `"owner":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:36"}`
+	const manager string = `"managedBy":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:facilities:org:88"}`
+	const owner string = `"owner":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:facilities:org:36"}`
 	is.True(strings.Contains(string(entityJSON), manager))
 	is.True(strings.Contains(string(entityJSON), owner))
 }

@@ -81,8 +81,8 @@ func TestSportsVenueContainsManagedByAndOwnerProperties(t *testing.T) {
 	e := ctxBrokerMock.CreateEntityCalls()[0].Entity
 	entityJSON, _ := json.Marshal(e)
 
-	const manager string = `"managedBy":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:888"}`
-	const owner string = `"owner":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:170"}`
+	const manager string = `"managedBy":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:facilities:org:888"}`
+	const owner string = `"owner":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:facilities:org:170"}`
 	is.True(strings.Contains(string(entityJSON), manager))
 	is.True(strings.Contains(string(entityJSON), owner))
 }
