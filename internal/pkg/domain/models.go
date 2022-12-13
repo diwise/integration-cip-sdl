@@ -14,7 +14,7 @@ type MultiPolygon struct {
 }
 
 type Organisation struct {
-	OrganisationID int    `json:"organisationID"`
+	OrganisationID int    `json:"organizationID"`
 	Name           string `json:"name"`
 }
 
