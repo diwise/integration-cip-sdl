@@ -49,6 +49,7 @@ type ExerciseTrail struct {
 	Difficulty       float64
 	PaymentRequired  bool
 	Manager          string
+	Owner            string
 }
 
 // SportsField contains a point of interest of type SportsField

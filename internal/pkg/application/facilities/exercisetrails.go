@@ -17,6 +17,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
+	"github.com/diwise/context-broker/pkg/ngsild/types/relationships"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 )
 
@@ -98,7 +99,11 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 	}
 
 	if feature.Properties.Manager != nil {
-		trail.Manager = feature.Properties.Manager.Name
+		trail.Manager = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:%d", feature.Properties.Manager.OrganisationID)
+	}
+
+	if feature.Properties.Owner != nil {
+		trail.Owner = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:%d", feature.Properties.Owner.OrganisationID)
 	}
 
 	fields := []domain.FeaturePropField{}
@@ -210,7 +215,11 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 	}
 
 	if trail.Manager != "" {
-		attributes = append(attributes, Text("manager", trail.Manager))
+		attributes = append(attributes, entities.R("manager", relationships.NewSingleObjectRelationship(trail.Manager)))
+	}
+
+	if trail.Owner != "" {
+		attributes = append(attributes, entities.R("owner", relationships.NewSingleObjectRelationship(trail.Owner)))
 	}
 
 	if trail.Difficulty >= 0 {
