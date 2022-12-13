@@ -99,7 +99,7 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 	}
 
 	if feature.Properties.Manager != nil {
-		trail.Manager = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:%d", feature.Properties.Manager.OrganisationID)
+		trail.ManagedBy = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:%d", feature.Properties.Manager.OrganisationID)
 	}
 
 	if feature.Properties.Owner != nil {
@@ -214,8 +214,8 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 		attributes = append(attributes, Status(trail.Status))
 	}
 
-	if trail.Manager != "" {
-		attributes = append(attributes, entities.R("manager", relationships.NewSingleObjectRelationship(trail.Manager)))
+	if trail.ManagedBy != "" {
+		attributes = append(attributes, entities.R("managedBy", relationships.NewSingleObjectRelationship(trail.ManagedBy)))
 	}
 
 	if trail.Owner != "" {

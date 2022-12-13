@@ -135,7 +135,7 @@ func TestExerciseTrail(t *testing.T) {
 	is.True(strings.Contains(string(entityJSON), payment))
 }
 
-func TestExerciseTrailContainsManagerAndOwnerProperties(t *testing.T) {
+func TestExerciseTrailContainsManagedByAndOwnerProperties(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, response)
 
 	ctxBrokerMock.CreateEntityFunc = func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
@@ -154,7 +154,7 @@ func TestExerciseTrailContainsManagerAndOwnerProperties(t *testing.T) {
 	e := ctxBrokerMock.CreateEntityCalls()[0].Entity
 	entityJSON, _ := json.Marshal(e)
 
-	const manager string = `"manager":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:88"}`
+	const manager string = `"managedBy":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:88"}`
 	const owner string = `"owner":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:36"}`
 	is.True(strings.Contains(string(entityJSON), manager))
 	is.True(strings.Contains(string(entityJSON), owner))

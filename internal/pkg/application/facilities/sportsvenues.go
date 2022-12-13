@@ -105,7 +105,7 @@ func parsePublishedSportsVenue(log zerolog.Logger, feature domain.Feature) (*dom
 	}
 
 	if feature.Properties.Manager != nil {
-		sportsVenue.Manager = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:%d", feature.Properties.Manager.OrganisationID)
+		sportsVenue.ManagedBy = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:%d", feature.Properties.Manager.OrganisationID)
 	}
 
 	if feature.Properties.Owner != nil {
@@ -158,8 +158,8 @@ func convertDBSportsVenueToFiwareSportsVenue(field domain.SportsVenue) []entitie
 		attributes = append(attributes, TextList("category", field.Category))
 	}
 
-	if field.Manager != "" {
-		attributes = append(attributes, entities.R("manager", relationships.NewSingleObjectRelationship(field.Manager)))
+	if field.ManagedBy != "" {
+		attributes = append(attributes, entities.R("managedBy", relationships.NewSingleObjectRelationship(field.ManagedBy)))
 	}
 
 	if field.Owner != "" {

@@ -48,7 +48,7 @@ type ExerciseTrail struct {
 	Source           string
 	Difficulty       float64
 	PaymentRequired  bool
-	Manager          string
+	ManagedBy        string
 	Owner            string
 }
 
@@ -63,7 +63,7 @@ type SportsField struct {
 	DateModified     time.Time
 	DateLastPrepared time.Time
 	Source           string
-	Manager          string
+	ManagedBy        string
 	Owner            string
 }
 
@@ -78,7 +78,7 @@ type SportsVenue struct {
 	DateModified time.Time
 	Source       string
 	SeeAlso      []string
-	Manager      string
+	ManagedBy    string
 	Owner        string
 }
 
