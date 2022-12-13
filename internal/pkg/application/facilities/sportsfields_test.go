@@ -53,7 +53,7 @@ func TestSportsField(t *testing.T) {
 	is.True(strings.Contains(string(entityJSON), categories))
 }
 
-func TestSportsFieldHasManagerProperty(t *testing.T) {
+func TestSportsFieldHasManagerAndOwnerProperties(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, sportsFieldResponse)
 
 	// Replace default failing CreateEntityFunc with a noop, so we can fetch the entity argument in the assert phase
@@ -74,8 +74,7 @@ func TestSportsFieldHasManagerProperty(t *testing.T) {
 	entityJSON, _ := json.Marshal(e)
 
 	const manager string = `"manager":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:888"}`
-	is.True(strings.Contains(string(entityJSON), manager))
-
 	const owner string = `"owner":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:168"}`
+	is.True(strings.Contains(string(entityJSON), manager))
 	is.True(strings.Contains(string(entityJSON), owner))
 }
