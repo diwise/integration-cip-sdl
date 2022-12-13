@@ -78,6 +78,7 @@ type SportsVenue struct {
 	Source       string
 	SeeAlso      []string
 	Manager      string
+	Owner        string
 }
 
 // ---
