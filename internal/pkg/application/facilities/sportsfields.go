@@ -139,9 +139,9 @@ func parsePublishedSportsField(log zerolog.Logger, feature domain.Feature) (*dom
 			}
 		} else if field.ID == 153 {
 			publicAccess := map[string]string{
-				"Hela dygnet":          "around-the-clock",
+				"Hela dygnet":          "always",
 				"Nej":                  "no",
-				"Särskilda öppettider": "now-and-then-get-a-better-name-for-me-please",
+				"Särskilda öppettider": "opening-hours",
 				"Utanför skoltid":      "after-school",
 			}
 			paValue := string(field.Value[1 : len(field.Value)-1])
