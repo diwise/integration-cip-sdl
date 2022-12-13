@@ -137,6 +137,20 @@ func parsePublishedSportsField(log zerolog.Logger, feature domain.Feature) (*dom
 					categories = append(categories, "bandy")
 				}
 			}
+		} else if field.ID == 153 {
+			publicAccess := map[string]string{
+				"Hela dygnet":          "always",
+				"Nej":                  "no",
+				"Särskilda öppettider": "opening-hours",
+				"Utanför skoltid":      "after-school",
+			}
+			paValue := string(field.Value[1 : len(field.Value)-1])
+
+			var ok bool
+			sportsField.PublicAccess, ok = publicAccess[paValue]
+			if !ok {
+				return nil, fmt.Errorf("unknown public access value: %s", paValue)
+			}
 		}
 	}
 
@@ -177,6 +191,10 @@ func convertDBSportsFieldToFiwareSportsField(field domain.SportsField) []entitie
 
 	if len(field.Category) > 0 {
 		attributes = append(attributes, TextList("category", field.Category))
+	}
+
+	if len(field.PublicAccess) > 0 {
+		attributes = append(attributes, Text("publicAccess", field.PublicAccess))
 	}
 
 	if field.Source != "" {
