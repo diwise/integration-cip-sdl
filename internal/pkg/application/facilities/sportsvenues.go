@@ -16,6 +16,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
+	"github.com/diwise/context-broker/pkg/ngsild/types/relationships"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 )
 
@@ -103,6 +104,14 @@ func parsePublishedSportsVenue(log zerolog.Logger, feature domain.Feature) (*dom
 		return nil, fmt.Errorf("failed to unmarshal geometry %s: %s", string(feature.Geometry.Coordinates), err.Error())
 	}
 
+	if feature.Properties.Manager != nil {
+		sportsVenue.ManagedBy = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:facilities:org:%d", feature.Properties.Manager.OrganisationID)
+	}
+
+	if feature.Properties.Owner != nil {
+		sportsVenue.Owner = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:facilities:org:%d", feature.Properties.Owner.OrganisationID)
+	}
+
 	fields := []domain.FeaturePropField{}
 	err = json.Unmarshal(feature.Properties.Fields, &fields)
 	if err != nil {
@@ -147,6 +156,14 @@ func convertDBSportsVenueToFiwareSportsVenue(field domain.SportsVenue) []entitie
 
 	if len(field.Category) > 0 {
 		attributes = append(attributes, TextList("category", field.Category))
+	}
+
+	if field.ManagedBy != "" {
+		attributes = append(attributes, entities.R("managedBy", relationships.NewSingleObjectRelationship(field.ManagedBy)))
+	}
+
+	if field.Owner != "" {
+		attributes = append(attributes, entities.R("owner", relationships.NewSingleObjectRelationship(field.Owner)))
 	}
 
 	attributes = append(attributes, TextList("seeAlso", field.SeeAlso))

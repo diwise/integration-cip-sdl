@@ -65,7 +65,7 @@ var response = `{"type":"FeatureCollection","features":[
 				"name":"Sundsvalls kommun Friluftsenheten"
 			},
 			"manager":{
-				"organizationID":36,
+				"organizationID":88,
 				"name":"Sundsvalls kommun Friluftsenheten"
 			},
 			"fields":[
@@ -133,6 +133,31 @@ func TestExerciseTrail(t *testing.T) {
 
 	is.True(strings.Contains(string(entityJSON), difficulty))
 	is.True(strings.Contains(string(entityJSON), payment))
+}
+
+func TestExerciseTrailContainsManagedByAndOwnerProperties(t *testing.T) {
+	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, response)
+
+	ctxBrokerMock.CreateEntityFunc = func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
+		return &ngsild.CreateEntityResult{}, nil
+	}
+
+	client := NewClient("apiKey", server.URL, zerolog.Logger{})
+
+	featureCollection, err := client.Get(context.Background())
+	is.NoErr(err)
+
+	err = StoreTrailsFromSource(zerolog.Logger{}, ctxBrokerMock, context.Background(), server.URL, *featureCollection)
+	is.NoErr(err)
+
+	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 2)
+	e := ctxBrokerMock.CreateEntityCalls()[0].Entity
+	entityJSON, _ := json.Marshal(e)
+
+	const manager string = `"managedBy":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:facilities:org:88"}`
+	const owner string = `"owner":{"type":"Relationship","object":"urn:ngsi-ld:Organisation:se:sundsvall:facilities:org:36"}`
+	is.True(strings.Contains(string(entityJSON), manager))
+	is.True(strings.Contains(string(entityJSON), owner))
 }
 
 func setupMockServiceThatReturns(is *is.I, expectedRequestBody string, responseCode int, body string) *httptest.Server {

@@ -13,6 +13,11 @@ type MultiPolygon struct {
 	Lines [][][][]float64
 }
 
+type Organisation struct {
+	OrganisationID int    `json:"organizationID"`
+	Name           string `json:"name"`
+}
+
 // Beach contains a point of interest of type Beach
 type Beach struct {
 	ID               string
@@ -43,6 +48,8 @@ type ExerciseTrail struct {
 	Source           string
 	Difficulty       float64
 	PaymentRequired  bool
+	ManagedBy        string
+	Owner            string
 }
 
 // SportsField contains a point of interest of type SportsField
@@ -57,6 +64,8 @@ type SportsField struct {
 	DateModified     time.Time
 	DateLastPrepared time.Time
 	Source           string
+	ManagedBy        string
+	Owner            string
 }
 
 // SportsVenue contains a point of interest of type SportsVenue
@@ -70,6 +79,8 @@ type SportsVenue struct {
 	DateModified time.Time
 	Source       string
 	SeeAlso      []string
+	ManagedBy    string
+	Owner        string
 }
 
 // ---
@@ -91,6 +102,8 @@ type FeaturePropField struct {
 type FeatureProps struct {
 	Name      string          `json:"name"`
 	Type      string          `json:"type"`
+	Manager   *Organisation   `json:"manager,omitempty"`
+	Owner     *Organisation   `json:"owner,omitempty"`
 	Published bool            `json:"published"`
 	Fields    json.RawMessage `json:"fields"`
 	Created   *string         `json:"created,omitempty"`
