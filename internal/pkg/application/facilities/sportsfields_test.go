@@ -50,7 +50,9 @@ func TestSportsField(t *testing.T) {
 	entityJSON, _ := json.Marshal(e)
 
 	const categories string = `"category":{"type":"Property","value":["skating","floodlit","ice-rink"]}`
+	const publicAccess string = `"publicAccess":{"type":"Property","value":"after-school"}`
 	is.True(strings.Contains(string(entityJSON), categories))
+	is.True(strings.Contains(string(entityJSON), publicAccess))
 }
 
 func TestSportsFieldHasManagedByAndOwnerProperties(t *testing.T) {

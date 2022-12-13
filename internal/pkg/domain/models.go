@@ -40,6 +40,7 @@ type ExerciseTrail struct {
 	Category         []string
 	Length           float64
 	AreaServed       string
+	PublicAccess     string
 	Geometry         LineString
 	Status           string
 	DateCreated      time.Time
@@ -58,6 +59,7 @@ type SportsField struct {
 	Name             string
 	Description      string
 	Category         []string
+	PublicAccess     string
 	Geometry         MultiPolygon
 	DateCreated      time.Time
 	DateModified     time.Time
