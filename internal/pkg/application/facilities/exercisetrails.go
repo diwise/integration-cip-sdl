@@ -164,6 +164,20 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 			if propertyValueMatches(field, "Ja") {
 				categories = append(categories, "ski-skate")
 			}
+		} else if field.ID == 282 {
+			publicAccess := map[string]string{
+				"Hela dygnet":          "always",
+				"Nej":                  "no",
+				"Särskilda öppettider": "opening-hours",
+				"Utanför skoltid":      "after-school",
+			}
+			paValue := string(field.Value[1 : len(field.Value)-1])
+
+			var ok bool
+			trail.PublicAccess, ok = publicAccess[paValue]
+			if !ok {
+				return nil, fmt.Errorf("unknown public access value: %s", paValue)
+			}
 		}
 	}
 
@@ -187,7 +201,7 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 	}
 
 	attributes := append(
-		make([]entities.EntityDecoratorFunc, 0, 10),
+		make([]entities.EntityDecoratorFunc, 0, 17),
 		LocationLS(trail.Geometry.Lines), Description(trail.Description),
 		DateTimeIfNotZero(properties.DateCreated, trail.DateCreated),
 		DateTimeIfNotZero(properties.DateModified, trail.DateModified),
@@ -204,6 +218,10 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 
 	if len(trail.Category) > 0 {
 		attributes = append(attributes, TextList("category", trail.Category))
+	}
+
+	if len(trail.PublicAccess) > 0 {
+		attributes = append(attributes, Text("publicAccess", trail.PublicAccess))
 	}
 
 	if trail.Source != "" {

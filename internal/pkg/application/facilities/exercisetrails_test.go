@@ -81,6 +81,7 @@ var response = `{"type":"FeatureCollection","features":[
 					{"objectID":2115,"fieldID":262,"direction":"NORMAL"},
 					{"objectID":2116,"fieldID":262,"direction":"NORMAL"},{"objectID":2117,"fieldID":262,"direction":"NORMAL"},{"objectID":2118,"fieldID":262,"direction":"NORMAL"},{"objectID":2121,"fieldID":262,"direction":"NORMAL"},{"objectID":2123,"fieldID":262,"direction":"NORMAL"},{"objectID":2124,"fieldID":262,"direction":"NORMAL"},{"objectID":2125,"fieldID":262,"direction":"NORMAL"},{"objectID":2126,"fieldID":262,"direction":"NORMAL"},{"objectID":2150,"fieldID":262,"direction":"NORMAL"},{"objectID":2151,"fieldID":262,"direction":"NORMAL"},{"objectID":2152,"fieldID":262,"direction":"NORMAL"},{"objectID":2105,"fieldID":262,"direction":"NORMAL"},{"objectID":2106,"fieldID":262,"direction":"NORMAL"},{"objectID":2107,"fieldID":262,"direction":"NORMAL"},{"objectID":2108,"fieldID":262,"direction":"NORMAL"},{"objectID":2109,"fieldID":262,"direction":"NORMAL"},{"objectID":2110,"fieldID":262,"direction":"NORMAL"},{"objectID":2111,"fieldID":262,"direction":"NORMAL"},{"objectID":2112,"fieldID":262,"direction":"NORMAL"},{"objectID":2155,"fieldID":262,"direction":"NORMAL"},{"objectID":2156,"fieldID":262,"direction":"NORMAL"},{"objectID":2157,"fieldID":262,"direction":"NORMAL"},{"objectID":2160,"fieldID":262,"direction":"NORMAL"},{"objectID":2161,"fieldID":262,"direction":"NORMAL"},{"objectID":2128,"fieldID":262,"direction":"NORMAL"},{"objectID":2129,"fieldID":262,"direction":"NORMAL"},{"objectID":2130,"fieldID":262,"direction":"NORMAL"},{"objectID":2132,"fieldID":262,"direction":"NORMAL"},{"objectID":2133,"fieldID":262,"direction":"NORMAL"},{"objectID":2134,"fieldID":262,"direction":"NORMAL"},{"objectID":2135,"fieldID":262,"direction":"NORMAL"}
 					]},
+				{"id":282,"name":"Allmänt tillgänglig","type":"DROPDOWN","value":"Hela dygnet"},
 				{"id":109,"name":"Svårighet","type":"DROPDOWN","value":"Medelsvår"},
 				{"id":112,"name":"Status","type":"DROPDOWN","value":"Gott skick"},
 				{"id":125,"name":"Underlag","type":"DROPDOWN","value":"Grus"},
@@ -130,9 +131,11 @@ func TestExerciseTrail(t *testing.T) {
 
 	const difficulty string = `"difficulty":{"type":"Property","value":0.5}`
 	const payment string = `"paymentRequired":{"type":"Property","value":"yes"}`
+	const publicAccess string = `"publicAccess":{"type":"Property","value":"always"}`
 
 	is.True(strings.Contains(string(entityJSON), difficulty))
 	is.True(strings.Contains(string(entityJSON), payment))
+	is.True(strings.Contains(string(entityJSON), publicAccess))
 }
 
 func TestExerciseTrailContainsManagedByAndOwnerProperties(t *testing.T) {

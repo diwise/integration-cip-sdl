@@ -40,6 +40,7 @@ type ExerciseTrail struct {
 	Category         []string
 	Length           float64
 	AreaServed       string
+	PublicAccess     string
 	Geometry         LineString
 	Status           string
 	DateCreated      time.Time
