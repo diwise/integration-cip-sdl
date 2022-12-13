@@ -15,6 +15,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
+	"github.com/diwise/context-broker/pkg/ngsild/types/relationships"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 )
 
@@ -99,7 +100,11 @@ func parsePublishedSportsField(log zerolog.Logger, feature domain.Feature) (*dom
 	}
 
 	if feature.Properties.Manager != nil {
-		sportsField.Manager = feature.Properties.Manager.Name
+		sportsField.Manager = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:%d", feature.Properties.Manager.OrganisationID)
+	}
+
+	if feature.Properties.Owner != nil {
+		sportsField.Owner = fmt.Sprintf("urn:ngsi-ld:Organisation:se:sundsvall:%d", feature.Properties.Owner.OrganisationID)
 	}
 
 	fields := []domain.FeaturePropField{}
@@ -163,7 +168,11 @@ func convertDBSportsFieldToFiwareSportsField(field domain.SportsField) []entitie
 	)
 
 	if field.Manager != "" {
-		attributes = append(attributes, Text("manager", field.Manager))
+		attributes = append(attributes, entities.R("manager", relationships.NewSingleObjectRelationship(field.Manager)))
+	}
+
+	if field.Owner != "" {
+		attributes = append(attributes, entities.R("owner", relationships.NewSingleObjectRelationship(field.Owner)))
 	}
 
 	if len(field.Category) > 0 {

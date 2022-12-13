@@ -63,6 +63,7 @@ type SportsField struct {
 	DateLastPrepared time.Time
 	Source           string
 	Manager          string
+	Owner            string
 }
 
 // SportsVenue contains a point of interest of type SportsVenue
@@ -99,6 +100,7 @@ type FeatureProps struct {
 	Name      string          `json:"name"`
 	Type      string          `json:"type"`
 	Manager   *Organisation   `json:"manager,omitempty"`
+	Owner     *Organisation   `json:"owner,omitempty"`
 	Published bool            `json:"published"`
 	Fields    json.RawMessage `json:"fields"`
 	Created   *string         `json:"created,omitempty"`
