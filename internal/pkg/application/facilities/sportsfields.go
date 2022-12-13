@@ -98,14 +98,8 @@ func parsePublishedSportsField(log zerolog.Logger, feature domain.Feature) (*dom
 		return nil, fmt.Errorf("failed to unmarshal geometry %s: %s", string(feature.Geometry.Coordinates), err.Error())
 	}
 
-	manager := domain.FeatureManagerField{}
-	err = json.Unmarshal(feature.Properties.Manager, &manager)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal manager %s: %s", string(feature.Properties.Manager), err.Error())
-	}
-
-	if manager.Name != "" {
-		sportsField.Manager = manager.Name
+	if feature.Properties.Manager != nil {
+		sportsField.Manager = feature.Properties.Manager.Name
 	}
 
 	fields := []domain.FeaturePropField{}

@@ -13,6 +13,11 @@ type MultiPolygon struct {
 	Lines [][][][]float64
 }
 
+type Organisation struct {
+	OrganisationID int    `json:"organisationID"`
+	Name           string `json:"name"`
+}
+
 // Beach contains a point of interest of type Beach
 type Beach struct {
 	ID               string
@@ -90,15 +95,10 @@ type FeaturePropField struct {
 	Value json.RawMessage `json:"value"`
 }
 
-type FeatureManagerField struct {
-	OrganisationID int    `json:"organisationID"`
-	Name           string `json:"name"`
-}
-
 type FeatureProps struct {
 	Name      string          `json:"name"`
 	Type      string          `json:"type"`
-	Manager   json.RawMessage `json:"manager"`
+	Manager   *Organisation   `json:"manager,omitempty"`
 	Published bool            `json:"published"`
 	Fields    json.RawMessage `json:"fields"`
 	Created   *string         `json:"created,omitempty"`
