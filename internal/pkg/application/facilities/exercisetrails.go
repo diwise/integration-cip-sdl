@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -181,6 +182,10 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 			if !ok {
 				return nil, fmt.Errorf("unknown public access value: %s", paValue)
 			}
+		} else if field.ID == 283 {
+			url := string(field.Value[1 : len(field.Value)-1])
+			url = strings.ReplaceAll(url, "\\/", "/")
+			trail.SeeAlso = []string{url}
 		}
 	}
 
@@ -246,6 +251,10 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 	if trail.Difficulty >= 0 {
 		// Add difficulty rounded to one decimal
 		attributes = append(attributes, Number("difficulty", math.Round(trail.Difficulty*100)/100))
+	}
+
+	if len(trail.SeeAlso) > 0 {
+		attributes = append(attributes, TextList("seeAlso", trail.SeeAlso))
 	}
 
 	return attributes
