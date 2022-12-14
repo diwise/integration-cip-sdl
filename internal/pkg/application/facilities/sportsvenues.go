@@ -130,6 +130,20 @@ func parsePublishedSportsVenue(log zerolog.Logger, feature domain.Feature) (*dom
 			url := string(field.Value[1 : len(field.Value)-1])
 			url = strings.ReplaceAll(url, "\\/", "/")
 			sportsVenue.SeeAlso = []string{url}
+		} else if field.ID == 200 {
+			publicAccess := map[string]string{
+				"Hela dygnet":          "always",
+				"Nej":                  "no",
+				"Särskilda öppettider": "opening-hours",
+				"Utanför skoltid":      "after-school",
+			}
+			paValue := string(field.Value[1 : len(field.Value)-1])
+
+			var ok bool
+			sportsVenue.PublicAccess, ok = publicAccess[paValue]
+			if !ok {
+				return nil, fmt.Errorf("unknown public access value: %s", paValue)
+			}
 		}
 	}
 
@@ -147,32 +161,36 @@ func parsePublishedSportsVenue(log zerolog.Logger, feature domain.Feature) (*dom
 	return sportsVenue, nil
 }
 
-func convertDBSportsVenueToFiwareSportsVenue(field domain.SportsVenue) []entities.EntityDecoratorFunc {
+func convertDBSportsVenueToFiwareSportsVenue(venue domain.SportsVenue) []entities.EntityDecoratorFunc {
 
 	attributes := append(
 		make([]entities.EntityDecoratorFunc, 0, 8),
-		Name(field.Name), Description(field.Description),
-		LocationMP(field.Geometry.Lines),
-		DateTimeIfNotZero(properties.DateCreated, field.DateCreated),
-		DateTimeIfNotZero(properties.DateModified, field.DateModified),
+		Name(venue.Name), Description(venue.Description),
+		LocationMP(venue.Geometry.Lines),
+		DateTimeIfNotZero(properties.DateCreated, venue.DateCreated),
+		DateTimeIfNotZero(properties.DateModified, venue.DateModified),
 	)
 
-	if len(field.Category) > 0 {
-		attributes = append(attributes, TextList("category", field.Category))
+	if len(venue.Category) > 0 {
+		attributes = append(attributes, TextList("category", venue.Category))
 	}
 
-	if field.ManagedBy != "" {
-		attributes = append(attributes, entities.R("managedBy", relationships.NewSingleObjectRelationship(field.ManagedBy)))
+	if venue.ManagedBy != "" {
+		attributes = append(attributes, entities.R("managedBy", relationships.NewSingleObjectRelationship(venue.ManagedBy)))
 	}
 
-	if field.Owner != "" {
-		attributes = append(attributes, entities.R("owner", relationships.NewSingleObjectRelationship(field.Owner)))
+	if venue.Owner != "" {
+		attributes = append(attributes, entities.R("owner", relationships.NewSingleObjectRelationship(venue.Owner)))
 	}
 
-	attributes = append(attributes, TextList("seeAlso", field.SeeAlso))
+	if len(venue.PublicAccess) > 0 {
+		attributes = append(attributes, Text("publicAccess", venue.PublicAccess))
+	}
 
-	if field.Source != "" {
-		attributes = append(attributes, Source(field.Source))
+	attributes = append(attributes, TextList("seeAlso", venue.SeeAlso))
+
+	if venue.Source != "" {
+		attributes = append(attributes, Source(venue.Source))
 	}
 
 	return attributes
