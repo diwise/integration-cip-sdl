@@ -187,7 +187,9 @@ func convertDBSportsVenueToFiwareSportsVenue(venue domain.SportsVenue) []entitie
 		attributes = append(attributes, Text("publicAccess", venue.PublicAccess))
 	}
 
-	attributes = append(attributes, TextList("seeAlso", venue.SeeAlso))
+	if len(venue.SeeAlso) > 0 {
+		attributes = append(attributes, TextList("seeAlso", venue.SeeAlso))
+	}
 
 	if venue.Source != "" {
 		attributes = append(attributes, Source(venue.Source))

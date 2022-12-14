@@ -49,6 +49,7 @@ type ExerciseTrail struct {
 	Source           string
 	Difficulty       float64
 	PaymentRequired  bool
+	SeeAlso          []string
 	ManagedBy        string
 	Owner            string
 }
