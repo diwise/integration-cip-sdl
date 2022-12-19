@@ -29,11 +29,12 @@ func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient client.Contex
 					continue
 				}
 
+				entityID := fiware.BeachIDPrefix + beach.ID
+
 				attributes := convertDomainBeachToFiwareBeach(*beach)
 
 				fragment, _ := entities.NewFragment(attributes...)
 
-				entityID := fiware.BeachIDPrefix + beach.ID
 				_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
 
 				// Throttle so we dont kill the broker
@@ -59,6 +60,9 @@ func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient client.Contex
 					logger.Info().Msgf("posted beach %s to context broker", res.Location())
 				}
 			}
+		} else if feature.Properties.Deleted != nil {
+			deleteEntity(ctx, ctxBrokerClient, logger, feature)
+			continue
 		}
 	}
 

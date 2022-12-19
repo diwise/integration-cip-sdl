@@ -36,13 +36,14 @@ func StoreSportsFieldsFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 					continue
 				}
 
+				entityID := diwise.SportsFieldIDPrefix + sportsField.ID
+
 				sportsField.Source = fmt.Sprintf("%s/get/%d", sourceURL, feature.ID)
 
 				attributes := convertDBSportsFieldToFiwareSportsField(*sportsField)
 
 				fragment, _ := entities.NewFragment(attributes...)
 
-				entityID := diwise.SportsFieldIDPrefix + sportsField.ID
 				_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
 
 				// Throttle so we dont kill the broker
@@ -66,6 +67,9 @@ func StoreSportsFieldsFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 					}
 				}
 			}
+		} else if feature.Properties.Deleted != nil {
+			deleteEntity(ctx, ctxBrokerClient, logger, feature)
+			continue
 		}
 	}
 

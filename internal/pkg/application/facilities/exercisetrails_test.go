@@ -14,7 +14,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
-	"github.com/diwise/context-broker/pkg/test"
+	test "github.com/diwise/context-broker/pkg/test"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"

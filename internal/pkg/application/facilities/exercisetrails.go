@@ -35,13 +35,14 @@ func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient client.Context
 					continue
 				}
 
+				entityID := diwise.ExerciseTrailIDPrefix + exerciseTrail.ID
+
 				exerciseTrail.Source = fmt.Sprintf("%s/get/%d", sourceURL, feature.ID)
 
 				attributes := convertDBTrailToFiwareExerciseTrail(*exerciseTrail)
 
 				fragment, _ := entities.NewFragment(attributes...)
 
-				entityID := diwise.ExerciseTrailIDPrefix + exerciseTrail.ID
 				_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
 
 				// Throttle so we dont kill the broker
@@ -65,6 +66,9 @@ func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient client.Context
 					}
 				}
 			}
+		} else if feature.Properties.Deleted != nil {
+			deleteEntity(ctx, ctxBrokerClient, logger, feature)
+			continue
 		}
 	}
 
