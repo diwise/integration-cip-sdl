@@ -61,8 +61,7 @@ func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient client.Contex
 				}
 			}
 		} else if feature.Properties.Deleted != nil {
-			deleteEntity(ctx, ctxBrokerClient, logger, feature)
-			continue
+			deleteEntity(ctx, ctxBrokerClient, logger, feature)			
 		}
 	}
 

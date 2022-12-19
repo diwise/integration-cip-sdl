@@ -67,8 +67,7 @@ func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient client.Context
 				}
 			}
 		} else if feature.Properties.Deleted != nil {
-			deleteEntity(ctx, ctxBrokerClient, logger, feature)
-			continue
+			deleteEntity(ctx, ctxBrokerClient, logger, feature)			
 		}
 	}
 
