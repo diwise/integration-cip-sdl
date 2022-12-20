@@ -111,6 +111,7 @@ type FeatureProps struct {
 	Fields    json.RawMessage `json:"fields"`
 	Created   *string         `json:"created,omitempty"`
 	Updated   *string         `json:"updated,omitempty"`
+	Deleted   *string         `json:"deleted,omitempty"`
 }
 
 type Feature struct {

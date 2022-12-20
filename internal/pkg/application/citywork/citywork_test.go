@@ -10,7 +10,7 @@ import (
 
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
-	"github.com/diwise/context-broker/pkg/test"
+	test "github.com/diwise/context-broker/pkg/test"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 )
