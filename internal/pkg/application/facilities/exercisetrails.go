@@ -26,52 +26,77 @@ func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient client.Context
 
 	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
 
+	isSupportedType := func(t string) bool {
+		return t == "Motionsspår" || t == "Skidspår" || t == "Långfärdsskridskoled" || t == "Cykelled"
+	}
+
 	for _, feature := range featureCollection.Features {
-		if feature.Properties.Published {
-			if feature.Properties.Type == "Motionsspår" || feature.Properties.Type == "Skidspår" || feature.Properties.Type == "Långfärdsskridskoled" || feature.Properties.Type == "Cykelled" {
-				exerciseTrail, err := parsePublishedExerciseTrail(logger, feature)
+		if isSupportedType(feature.Properties.Type) {
+			exerciseTrail, published, err := parseExerciseTrail(logger, feature)
+			if err != nil {
+				logger.Error().Err(err).Msg("failed to parse motionsspår")
+				continue
+			}
+
+			entityID := diwise.ExerciseTrailIDPrefix + exerciseTrail.ID
+
+			if !published {
+				if shouldBeDeleted(feature) {
+					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
+					if err != nil {
+						logger.Info().Msgf("could not delete entity %s", entityID)
+					}
+				}
+				continue
+			}
+
+			exerciseTrail.Source = fmt.Sprintf("%s/get/%d", sourceURL, feature.ID)
+
+			attributes := convertDBTrailToFiwareExerciseTrail(*exerciseTrail)
+
+			fragment, _ := entities.NewFragment(attributes...)
+
+			_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
+
+			// Throttle so we dont kill the broker
+			time.Sleep(500 * time.Millisecond)
+
+			if err != nil {
+				if !errors.Is(err, ngsierrors.ErrNotFound) {
+					logger.Error().Err(err).Msg("failed to merge entity")
+					continue
+				}
+				entity, err := entities.New(entityID, diwise.ExerciseTrailTypeName, attributes...)
 				if err != nil {
-					logger.Error().Err(err).Msg("failed to parse motionsspår")
+					logger.Error().Err(err).Msg("entities.New failed")
 					continue
 				}
 
-				entityID := diwise.ExerciseTrailIDPrefix + exerciseTrail.ID
-
-				exerciseTrail.Source = fmt.Sprintf("%s/get/%d", sourceURL, feature.ID)
-
-				attributes := convertDBTrailToFiwareExerciseTrail(*exerciseTrail)
-
-				fragment, _ := entities.NewFragment(attributes...)
-
-				_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
-
-				// Throttle so we dont kill the broker
-				time.Sleep(500 * time.Millisecond)
-
+				_, err = ctxBrokerClient.CreateEntity(ctx, entity, headers)
 				if err != nil {
-					if !errors.Is(err, ngsierrors.ErrNotFound) {
-						logger.Error().Err(err).Msg("failed to merge entity")
-						continue
-					}
-					entity, err := entities.New(entityID, diwise.ExerciseTrailTypeName, attributes...)
-					if err != nil {
-						logger.Error().Err(err).Msg("entities.New failed")
-						continue
-					}
-
-					_, err = ctxBrokerClient.CreateEntity(ctx, entity, headers)
-					if err != nil {
-						logger.Error().Err(err).Msg("failed to post exercise trail to context broker")
-						continue
-					}
+					logger.Error().Err(err).Msg("failed to post exercise trail to context broker")
+					continue
 				}
 			}
-		} else if feature.Properties.Deleted != nil {
-			deleteEntity(ctx, ctxBrokerClient, logger, feature)			
 		}
 	}
 
 	return nil
+}
+
+func parseExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.ExerciseTrail, bool, error) {
+	if feature.Properties.Published {
+		e, err := parsePublishedExerciseTrail(log, feature)
+		return e, true, err
+	}
+
+	trail := &domain.ExerciseTrail{
+		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
+		Name:        feature.Properties.Name,
+		Description: "",
+		Difficulty:  -1,
+	}
+	return trail, false, nil
 }
 
 func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.ExerciseTrail, error) {
@@ -83,8 +108,6 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 		Description: "",
 		Difficulty:  -1,
 	}
-
-	var timeFormat string = "2006-01-02 15:04:05"
 
 	if feature.Properties.Created != nil {
 		created, err := time.Parse(timeFormat, *feature.Properties.Created)

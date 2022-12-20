@@ -21,51 +21,73 @@ func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient client.Contex
 	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
 
 	for _, feature := range featureCollection.Features {
-		if feature.Properties.Published {
-			if feature.Properties.Type == "Strandbad" {
-				beach, err := parsePublishedBeach(logger, feature)
+		if feature.Properties.Type == "Strandbad" {
+			beach, published, err := parseBeach(logger, feature)
+			if err != nil {
+				logger.Error().Err(err).Msg("failed to parse strandbad")
+				continue
+			}
+
+			entityID := fiware.BeachIDPrefix + beach.ID
+
+			if !published {
+				if shouldBeDeleted(feature) {
+					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
+					if err != nil {
+						logger.Info().Msgf("could not delete entity %s", entityID)
+					}
+				}
+				continue
+			}
+
+			attributes := convertDomainBeachToFiwareBeach(*beach)
+
+			fragment, _ := entities.NewFragment(attributes...)
+
+			_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
+
+			// Throttle so we dont kill the broker
+			time.Sleep(500 * time.Millisecond)
+
+			if err != nil {
+				if !errors.Is(err, ngsierrors.ErrNotFound) {
+					logger.Error().Err(err).Msg("failed to merge entity")
+					continue
+				}
+				entity, err := entities.New(entityID, fiware.BeachTypeName, attributes...)
 				if err != nil {
-					logger.Error().Err(err).Msg("failed to parse strandbad")
+					logger.Error().Err(err).Msg("entities.New failed")
 					continue
 				}
 
-				entityID := fiware.BeachIDPrefix + beach.ID
-
-				attributes := convertDomainBeachToFiwareBeach(*beach)
-
-				fragment, _ := entities.NewFragment(attributes...)
-
-				_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
-
-				// Throttle so we dont kill the broker
-				time.Sleep(500 * time.Millisecond)
-
+				res, err := ctxBrokerClient.CreateEntity(ctx, entity, headers)
 				if err != nil {
-					if !errors.Is(err, ngsierrors.ErrNotFound) {
-						logger.Error().Err(err).Msg("failed to merge entity")
-						continue
-					}
-					entity, err := entities.New(entityID, fiware.BeachTypeName, attributes...)
-					if err != nil {
-						logger.Error().Err(err).Msg("entities.New failed")
-						continue
-					}
-
-					res, err := ctxBrokerClient.CreateEntity(ctx, entity, headers)
-					if err != nil {
-						logger.Error().Err(err).Msg("failed to post beach to context broker")
-						continue
-					}
-
-					logger.Info().Msgf("posted beach %s to context broker", res.Location())
+					logger.Error().Err(err).Msg("failed to post beach to context broker")
+					continue
 				}
+
+				logger.Info().Msgf("posted beach %s to context broker", res.Location())
 			}
-		} else if feature.Properties.Deleted != nil {
-			deleteEntity(ctx, ctxBrokerClient, logger, feature)			
 		}
+
 	}
 
 	return nil
+}
+
+func parseBeach(log zerolog.Logger, feature domain.Feature) (*domain.Beach, bool, error) {
+	if feature.Properties.Published {
+		b, err := parsePublishedBeach(log, feature)
+		return b, true, err
+	}
+	
+	beach := &domain.Beach{
+		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
+		Name:        feature.Properties.Name,
+		Description: "",
+	}
+
+	return beach, false, nil
 }
 
 func parsePublishedBeach(log zerolog.Logger, feature domain.Feature) (*domain.Beach, error) {
@@ -77,8 +99,6 @@ func parsePublishedBeach(log zerolog.Logger, feature domain.Feature) (*domain.Be
 		Description: "",
 	}
 
-	var timeFormat string = "2006-01-02 15:04:05"
-
 	if feature.Properties.Created != nil {
 		created, err := time.Parse(timeFormat, *feature.Properties.Created)
 		if err == nil {
@@ -86,7 +106,11 @@ func parsePublishedBeach(log zerolog.Logger, feature domain.Feature) (*domain.Be
 		}
 	}
 
-	if feature.Properties.Updated != nil {
+	if feature.Properties.Updated != nil {	beach := &domain.Beach{
+		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
+		Name:        feature.Properties.Name,
+		Description: "",
+	}
 		modified, err := time.Parse(timeFormat, *feature.Properties.Updated)
 		if err == nil {
 			beach.DateModified = modified.UTC()

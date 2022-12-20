@@ -26,53 +26,75 @@ func StoreSportsFieldsFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
 
 	for _, feature := range featureCollection.Features {
-		if feature.Properties.Published {
-			if feature.Properties.Type == "Aktivitetsyta" {
-				sportsField, err := parsePublishedSportsField(logger, feature)
-				if err != nil {
-					if !errors.Is(err, ErrSportsFieldIsOfIgnoredType) {
-						logger.Error().Err(err).Msg("failed to parse aktivitetsyta")
+		if feature.Properties.Type == "Aktivitetsyta" {
+			sportsField, published, err := parseSportsField(logger, feature)
+			if err != nil {
+				if !errors.Is(err, ErrSportsFieldIsOfIgnoredType) {
+					logger.Error().Err(err).Msg("failed to parse aktivitetsyta")
+				}
+				continue
+			}
+
+			entityID := diwise.SportsFieldIDPrefix + sportsField.ID
+
+			if !published {
+				if shouldBeDeleted(feature) {
+					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
+					if err != nil {
+						logger.Info().Msgf("could not delete entity %s", entityID)
 					}
+				}
+				continue
+			}
+
+			sportsField.Source = fmt.Sprintf("%s/get/%d", sourceURL, feature.ID)
+
+			attributes := convertDBSportsFieldToFiwareSportsField(*sportsField)
+
+			fragment, _ := entities.NewFragment(attributes...)
+
+			_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
+
+			// Throttle so we dont kill the broker
+			time.Sleep(500 * time.Millisecond)
+
+			if err != nil {
+				if !errors.Is(err, ngsierrors.ErrNotFound) {
+					logger.Error().Err(err).Msg("failed to merge entity")
+					continue
+				}
+				entity, err := entities.New(entityID, diwise.SportsFieldTypeName, attributes...)
+				if err != nil {
+					logger.Error().Err(err).Msg("entities.New failed")
 					continue
 				}
 
-				entityID := diwise.SportsFieldIDPrefix + sportsField.ID
-
-				sportsField.Source = fmt.Sprintf("%s/get/%d", sourceURL, feature.ID)
-
-				attributes := convertDBSportsFieldToFiwareSportsField(*sportsField)
-
-				fragment, _ := entities.NewFragment(attributes...)
-
-				_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
-
-				// Throttle so we dont kill the broker
-				time.Sleep(500 * time.Millisecond)
-
+				_, err = ctxBrokerClient.CreateEntity(ctx, entity, headers)
 				if err != nil {
-					if !errors.Is(err, ngsierrors.ErrNotFound) {
-						logger.Error().Err(err).Msg("failed to merge entity")
-						continue
-					}
-					entity, err := entities.New(entityID, diwise.SportsFieldTypeName, attributes...)
-					if err != nil {
-						logger.Error().Err(err).Msg("entities.New failed")
-						continue
-					}
-
-					_, err = ctxBrokerClient.CreateEntity(ctx, entity, headers)
-					if err != nil {
-						logger.Error().Err(err).Msg("failed to post sports field to context broker")
-						continue
-					}
+					logger.Error().Err(err).Msg("failed to post sports field to context broker")
+					continue
 				}
 			}
-		} else if feature.Properties.Deleted != nil {
-			deleteEntity(ctx, ctxBrokerClient, logger, feature)			
+
 		}
 	}
 
 	return nil
+}
+
+func parseSportsField(log zerolog.Logger, feature domain.Feature) (*domain.SportsField, bool, error) {
+	if feature.Properties.Published {
+		sf, err := parsePublishedSportsField(log, feature)
+		return sf, true, err
+	}
+
+	sportsField := &domain.SportsField{
+		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
+		Name:        feature.Properties.Name,
+		Description: "",
+	}
+
+	return sportsField, false, nil
 }
 
 func parsePublishedSportsField(log zerolog.Logger, feature domain.Feature) (*domain.SportsField, error) {
@@ -83,8 +105,6 @@ func parsePublishedSportsField(log zerolog.Logger, feature domain.Feature) (*dom
 		Name:        feature.Properties.Name,
 		Description: "",
 	}
-
-	var timeFormat string = "2006-01-02 15:04:05"
 
 	if feature.Properties.Created != nil {
 		created, err := time.Parse(timeFormat, *feature.Properties.Created)

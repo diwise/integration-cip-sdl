@@ -1,27 +1,31 @@
 package facilities
 
 import (
-	"context"
-	"fmt"
 	"time"
 
-	"github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
-	"github.com/rs/zerolog"
 )
 
-func deleteEntity(ctx context.Context, ctxBrokerClient client.ContextBrokerClient, logger zerolog.Logger, feature domain.Feature) {
-	var timeFormat string = "2006-01-02 15:04:05"
-	if t, err := time.Parse(timeFormat, *feature.Properties.Deleted); err == nil {
-		sevenDaysAgo := time.Now().UTC().Add(-1 * (24 * 7 * time.Hour))
-		if t.Before(sevenDaysAgo) {
-			return
+const timeFormat string = "2006-01-02 15:04:05"
+
+var deleted map[int64]time.Time = make(map[int64]time.Time)
+
+func shouldBeDeleted(feature domain.Feature) bool {
+	if feature.Properties.Deleted == nil {
+		return false
+	}
+
+	if deletedTime, ok := deleted[feature.ID]; ok {
+		y, m, d := time.Now().UTC().Date()
+		midnight := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+
+		if deletedTime.Before(midnight) {
+			delete(deleted, feature.ID)
+		} else {
+			return false
 		}
 	}
 
-	entityID := fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID)
-	_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
-	if err != nil {
-		logger.Info().Msgf("delete %s (%s) failed with error \"%s\"", feature.Properties.Name, entityID, err.Error())
-	}
+	deleted[feature.ID] = time.Now().UTC()
+	return true
 }
