@@ -37,8 +37,8 @@ type sdlGeometry struct {
 	Geometries json.RawMessage `json:"geometries"`
 }
 
-func (sf *sdlFeature) ID() string {	
-	id := fmt.Sprintf("%d", sf.Properties.Id)	
+func (sf *sdlFeature) ID() string {
+	id := fmt.Sprintf("%d", sf.Properties.Id)
 	return id
 }
 

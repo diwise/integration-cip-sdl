@@ -10,9 +10,9 @@ const timeFormat string = "2006-01-02 15:04:05"
 
 var deleted map[int64]time.Time = make(map[int64]time.Time)
 
-func shouldBeDeleted(feature domain.Feature) bool {
-	if feature.Properties.Deleted == nil {
-		return false
+func shouldBeDeleted(feature domain.Feature) (bool, bool) {
+	if feature.Properties.Published && feature.Properties.Deleted == nil {
+		return false, false
 	}
 
 	if deletedTime, ok := deleted[feature.ID]; ok {
@@ -22,10 +22,10 @@ func shouldBeDeleted(feature domain.Feature) bool {
 		if deletedTime.Before(midnight) {
 			delete(deleted, feature.ID)
 		} else {
-			return false
+			return true, true
 		}
 	}
 
 	deleted[feature.ID] = time.Now().UTC()
-	return true
+	return true, false
 }

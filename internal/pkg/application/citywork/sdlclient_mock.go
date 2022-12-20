@@ -14,19 +14,19 @@ var _ SdlClient = &SdlClientMock{}
 
 // SdlClientMock is a mock implementation of SdlClient.
 //
-// 	func TestSomethingThatUsesSdlClient(t *testing.T) {
+//	func TestSomethingThatUsesSdlClient(t *testing.T) {
 //
-// 		// make and configure a mocked SdlClient
-// 		mockedSdlClient := &SdlClientMock{
-// 			GetFunc: func(cxt context.Context) (*sdlResponse, error) {
-// 				panic("mock out the Get method")
-// 			},
-// 		}
+//		// make and configure a mocked SdlClient
+//		mockedSdlClient := &SdlClientMock{
+//			GetFunc: func(cxt context.Context) (*sdlResponse, error) {
+//				panic("mock out the Get method")
+//			},
+//		}
 //
-// 		// use mockedSdlClient in code that requires SdlClient
-// 		// and then make assertions.
+//		// use mockedSdlClient in code that requires SdlClient
+//		// and then make assertions.
 //
-// 	}
+//	}
 type SdlClientMock struct {
 	// GetFunc mocks the Get method.
 	GetFunc func(cxt context.Context) (*sdlResponse, error)
@@ -60,7 +60,8 @@ func (mock *SdlClientMock) Get(cxt context.Context) (*sdlResponse, error) {
 
 // GetCalls gets all the calls that were made to Get.
 // Check the length with:
-//     len(mockedSdlClient.GetCalls())
+//
+//	len(mockedSdlClient.GetCalls())
 func (mock *SdlClientMock) GetCalls() []struct {
 	Cxt context.Context
 } {

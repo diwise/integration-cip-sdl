@@ -22,16 +22,16 @@ func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient client.Contex
 
 	for _, feature := range featureCollection.Features {
 		if feature.Properties.Type == "Strandbad" {
-			beach, published, err := parseBeach(logger, feature)
+			beach, err := parseBeach(logger, feature)
 			if err != nil {
 				logger.Error().Err(err).Msg("failed to parse strandbad")
 				continue
 			}
 
 			entityID := fiware.BeachIDPrefix + beach.ID
-
-			if !published {
-				if shouldBeDeleted(feature) {
+			
+			if okToDel, alreadyDeleted := shouldBeDeleted(feature); okToDel {
+				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {
 						logger.Info().Msgf("could not delete entity %s", entityID)
@@ -75,28 +75,17 @@ func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient client.Contex
 	return nil
 }
 
-func parseBeach(log zerolog.Logger, feature domain.Feature) (*domain.Beach, bool, error) {
-	if feature.Properties.Published {
-		b, err := parsePublishedBeach(log, feature)
-		return b, true, err
-	}
-	
-	beach := &domain.Beach{
-		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
-		Name:        feature.Properties.Name,
-		Description: "",
-	}
-
-	return beach, false, nil
-}
-
-func parsePublishedBeach(log zerolog.Logger, feature domain.Feature) (*domain.Beach, error) {
+func parseBeach(log zerolog.Logger, feature domain.Feature) (*domain.Beach, error) {
 	log.Info().Msgf("found published beach %d %s\n", feature.ID, feature.Properties.Name)
 
 	beach := &domain.Beach{
 		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
 		Name:        feature.Properties.Name,
 		Description: "",
+	}
+
+	if !feature.Properties.Published {
+		return beach, nil
 	}
 
 	if feature.Properties.Created != nil {
@@ -106,11 +95,7 @@ func parsePublishedBeach(log zerolog.Logger, feature domain.Feature) (*domain.Be
 		}
 	}
 
-	if feature.Properties.Updated != nil {	beach := &domain.Beach{
-		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
-		Name:        feature.Properties.Name,
-		Description: "",
-	}
+	if feature.Properties.Updated != nil {
 		modified, err := time.Parse(timeFormat, *feature.Properties.Updated)
 		if err == nil {
 			beach.DateModified = modified.UTC()
@@ -218,7 +203,6 @@ var seeAlsoRefs map[int64]extraInfo = map[int64]extraInfo{
 }
 
 func convertDomainBeachToFiwareBeach(b domain.Beach) []entities.EntityDecoratorFunc {
-
 	properties := []entities.EntityDecoratorFunc{
 		entities.DefaultContext(),
 		decorators.Description(b.Description),

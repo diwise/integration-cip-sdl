@@ -32,7 +32,7 @@ func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient client.Context
 
 	for _, feature := range featureCollection.Features {
 		if isSupportedType(feature.Properties.Type) {
-			exerciseTrail, published, err := parseExerciseTrail(logger, feature)
+			exerciseTrail, err := parseExerciseTrail(logger, feature)
 			if err != nil {
 				logger.Error().Err(err).Msg("failed to parse motionsspår")
 				continue
@@ -40,8 +40,8 @@ func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient client.Context
 
 			entityID := diwise.ExerciseTrailIDPrefix + exerciseTrail.ID
 
-			if !published {
-				if shouldBeDeleted(feature) {
+			if okToDel, alreadyDeleted := shouldBeDeleted(feature); okToDel {
+				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {
 						logger.Info().Msgf("could not delete entity %s", entityID)
@@ -84,22 +84,7 @@ func StoreTrailsFromSource(logger zerolog.Logger, ctxBrokerClient client.Context
 	return nil
 }
 
-func parseExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.ExerciseTrail, bool, error) {
-	if feature.Properties.Published {
-		e, err := parsePublishedExerciseTrail(log, feature)
-		return e, true, err
-	}
-
-	trail := &domain.ExerciseTrail{
-		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
-		Name:        feature.Properties.Name,
-		Description: "",
-		Difficulty:  -1,
-	}
-	return trail, false, nil
-}
-
-func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.ExerciseTrail, error) {
+func parseExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.ExerciseTrail, error) {
 	log.Info().Msgf("found published exercise trail %d %s", feature.ID, feature.Properties.Name)
 
 	trail := &domain.ExerciseTrail{
@@ -107,6 +92,10 @@ func parsePublishedExerciseTrail(log zerolog.Logger, feature domain.Feature) (*d
 		Name:        feature.Properties.Name,
 		Description: "",
 		Difficulty:  -1,
+	}
+
+	if !feature.Properties.Published {
+		return trail, nil
 	}
 
 	if feature.Properties.Created != nil {

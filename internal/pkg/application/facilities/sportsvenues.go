@@ -32,7 +32,7 @@ func StoreSportsVenuesFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 
 	for _, feature := range featureCollection.Features {
 		if isSupportedType(feature.Properties.Type) {
-			sportsVenue, published, err := parseSportsVenue(logger, feature)
+			sportsVenue, err := parseSportsVenue(logger, feature)
 			if err != nil {
 				if !errors.Is(err, ErrSportsVenueIsOfIgnoredType) {
 					logger.Error().Err(err).Msg("failed to parse feature")
@@ -42,8 +42,8 @@ func StoreSportsVenuesFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 
 			entityID := diwise.SportsVenueIDPrefix + sportsVenue.ID
 
-			if !published {
-				if shouldBeDeleted(feature) {
+			if okToDel, alreadyDeleted := shouldBeDeleted(feature); okToDel {
+				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {
 						logger.Info().Msgf("could not delete entity %s", entityID)
@@ -86,26 +86,17 @@ func StoreSportsVenuesFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 	return nil
 }
 
-func parseSportsVenue(log zerolog.Logger, feature domain.Feature) (*domain.SportsVenue, bool, error) {
-	if feature.Properties.Published {
-		sv, err := parsePublishedSportsVenue(log, feature)
-		return sv, true, err
-	}
-	sportsVenue := &domain.SportsVenue{
-		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
-		Name:        feature.Properties.Name,
-		Description: "",
-	}
-	return sportsVenue, false, nil
-}
-
-func parsePublishedSportsVenue(log zerolog.Logger, feature domain.Feature) (*domain.SportsVenue, error) {
+func parseSportsVenue(log zerolog.Logger, feature domain.Feature) (*domain.SportsVenue, error) {
 	log.Info().Msgf("found published sports venue %d %s", feature.ID, feature.Properties.Name)
 
 	sportsVenue := &domain.SportsVenue{
 		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
 		Name:        feature.Properties.Name,
 		Description: "",
+	}
+
+	if !feature.Properties.Published {
+		return sportsVenue, nil
 	}
 
 	if feature.Properties.Created != nil {

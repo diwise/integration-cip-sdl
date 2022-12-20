@@ -27,7 +27,7 @@ func StoreSportsFieldsFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 
 	for _, feature := range featureCollection.Features {
 		if feature.Properties.Type == "Aktivitetsyta" {
-			sportsField, published, err := parseSportsField(logger, feature)
+			sportsField, err := parseSportsField(logger, feature)
 			if err != nil {
 				if !errors.Is(err, ErrSportsFieldIsOfIgnoredType) {
 					logger.Error().Err(err).Msg("failed to parse aktivitetsyta")
@@ -37,8 +37,8 @@ func StoreSportsFieldsFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 
 			entityID := diwise.SportsFieldIDPrefix + sportsField.ID
 
-			if !published {
-				if shouldBeDeleted(feature) {
+			if okToDel, alreadyDeleted := shouldBeDeleted(feature); okToDel {
+				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {
 						logger.Info().Msgf("could not delete entity %s", entityID)
@@ -82,28 +82,17 @@ func StoreSportsFieldsFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 	return nil
 }
 
-func parseSportsField(log zerolog.Logger, feature domain.Feature) (*domain.SportsField, bool, error) {
-	if feature.Properties.Published {
-		sf, err := parsePublishedSportsField(log, feature)
-		return sf, true, err
-	}
-
-	sportsField := &domain.SportsField{
-		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
-		Name:        feature.Properties.Name,
-		Description: "",
-	}
-
-	return sportsField, false, nil
-}
-
-func parsePublishedSportsField(log zerolog.Logger, feature domain.Feature) (*domain.SportsField, error) {
+func parseSportsField(log zerolog.Logger, feature domain.Feature) (*domain.SportsField, error) {
 	log.Info().Msgf("found published sports field %d %s", feature.ID, feature.Properties.Name)
 
 	sportsField := &domain.SportsField{
 		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
 		Name:        feature.Properties.Name,
 		Description: "",
+	}
+
+	if !feature.Properties.Published {
+		return sportsField, nil
 	}
 
 	if feature.Properties.Created != nil {
