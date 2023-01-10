@@ -2,13 +2,15 @@ package citywork
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/diwise/context-broker/pkg/datamodels/diwise"
 	"github.com/diwise/context-broker/pkg/datamodels/fiware"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
-	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
+	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/rs/zerolog"
@@ -68,12 +70,29 @@ func (cw *cw) getAndPublishCityWork(ctx context.Context) error {
 			continue
 		}
 
-		cwModel := toCityWorkModel(f)
+		entityID := fiware.CityWorkIDPrefix + f.ID()
 
-		_, err = cw.contextbroker.CreateEntity(ctx, cwModel, headers)
+		attributes := toCityWorkModel(f)
+
+		fragment, _ := entities.NewFragment(attributes...)
+
+		_, err = cw.contextbroker.MergeEntity(ctx, entityID, fragment, headers)
 		if err != nil {
-			cw.log.Error().Err(err).Msg("failed to add entity")
-			continue
+			if !errors.Is(err, ngsierrors.ErrNotFound) {
+				cw.log.Error().Err(err).Msg("failed to merge entity")
+				continue
+			}
+			entity, err := entities.New(entityID, diwise.ExerciseTrailTypeName, attributes...)
+			if err != nil {
+				cw.log.Error().Err(err).Msg("entities.New failed")
+				continue
+			}
+
+			_, err = cw.contextbroker.CreateEntity(ctx, entity, headers)
+			if err != nil {
+				cw.log.Error().Err(err).Msg("failed to post city work to context broker")
+				continue
+			}
 		}
 
 		previous[featureID] = featureID
@@ -82,13 +101,14 @@ func (cw *cw) getAndPublishCityWork(ctx context.Context) error {
 	return nil
 }
 
-func toCityWorkModel(sf sdlFeature) ngsitypes.Entity {
+func toCityWorkModel(sf sdlFeature) []entities.EntityDecoratorFunc {
 	long, lat, _ := sf.Geometry.AsPoint()
 
 	startDate := strings.ReplaceAll(sf.Properties.Start, "Z", "") + "T00:00:00Z"
 	endDate := strings.ReplaceAll(sf.Properties.End, "Z", "") + "T23:59:59Z"
 
-	cw, _ := entities.New(fiware.CityWorkIDPrefix+sf.ID(), fiware.CityWorkTypeName,
+	attributes := append(
+		make([]entities.EntityDecoratorFunc, 0, 5),
 		decorators.Location(lat, long),
 		decorators.Description(sf.Properties.Description),
 		decorators.DateTime("startDate", startDate),
@@ -96,5 +116,5 @@ func toCityWorkModel(sf sdlFeature) ngsitypes.Entity {
 		decorators.DateTime("dateCreated", time.Now().UTC().Format(time.RFC3339)),
 	)
 
-	return cw
+	return attributes
 }
