@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/diwise/context-broker/pkg/datamodels/diwise"
 	"github.com/diwise/context-broker/pkg/datamodels/fiware"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
@@ -82,7 +81,7 @@ func (cw *cw) getAndPublishCityWork(ctx context.Context) error {
 				cw.log.Error().Err(err).Msg("failed to merge entity")
 				continue
 			}
-			entity, err := entities.New(entityID, diwise.ExerciseTrailTypeName, attributes...)
+			entity, err := entities.New(entityID, fiware.CityWorkTypeName, attributes...)
 			if err != nil {
 				cw.log.Error().Err(err).Msg("entities.New failed")
 				continue
