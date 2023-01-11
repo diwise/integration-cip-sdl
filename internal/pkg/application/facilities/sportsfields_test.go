@@ -80,3 +80,63 @@ func TestSportsFieldHasManagedByAndOwnerProperties(t *testing.T) {
 	is.True(strings.Contains(string(entityJSON), manager))
 	is.True(strings.Contains(string(entityJSON), owner))
 }
+
+func TestDeletedSportsField(t *testing.T) {
+	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, sportsFieldResponse)
+
+	ctxBrokerMock.DeleteEntityFunc = func(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error) {
+		return &ngsild.DeleteEntityResult{}, nil
+	}
+
+	fc := domain.FeatureCollection{}
+	json.Unmarshal([]byte(sportsFieldResponse), &fc)
+
+	var deletedDate = "2022-01-01 00:00:01"
+	fc.Features[0].Properties.Deleted = &deletedDate
+
+	err := StoreSportsFieldsFromSource(log.With().Logger(), ctxBrokerMock, context.Background(), server.URL, fc)
+	is.NoErr(err)
+	is.Equal(len(ctxBrokerMock.DeleteEntityCalls()), 1)
+}
+
+func TestUnpublishedSportsField(t *testing.T) {
+	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, sportsFieldResponse)
+
+	ctxBrokerMock.DeleteEntityFunc = func(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error) {
+		return &ngsild.DeleteEntityResult{}, nil
+	}
+
+	fc := domain.FeatureCollection{}
+	json.Unmarshal([]byte(sportsFieldResponse), &fc)
+	
+	fc.Features[0].Properties.Published = false
+
+	err := StoreSportsFieldsFromSource(log.With().Logger(), ctxBrokerMock, context.Background(), server.URL, fc)
+	is.NoErr(err)
+	is.Equal(len(ctxBrokerMock.DeleteEntityCalls()), 1)
+}
+
+func TestDeletedSportsFieldOnlyOnce(t *testing.T) {
+	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, sportsFieldResponse)
+
+	ctxBrokerMock.DeleteEntityFunc = func(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error) {
+		return &ngsild.DeleteEntityResult{}, nil
+	}
+
+	fc := domain.FeatureCollection{}
+	json.Unmarshal([]byte(sportsFieldResponse), &fc)
+
+	var deletedDate = "2022-01-01 00:00:01"
+	fc.Features[0].Properties.Deleted = &deletedDate
+
+	err := StoreSportsFieldsFromSource(log.With().Logger(), ctxBrokerMock, context.Background(), server.URL, fc)
+	is.NoErr(err)
+
+	is.Equal(len(ctxBrokerMock.DeleteEntityCalls()), 1)
+
+	// "store" again, this time no delete should be executed
+	err = StoreSportsFieldsFromSource(log.With().Logger(), ctxBrokerMock, context.Background(), server.URL, fc)
+	is.NoErr(err)
+	
+	is.Equal(len(ctxBrokerMock.DeleteEntityCalls()), 1)
+}
