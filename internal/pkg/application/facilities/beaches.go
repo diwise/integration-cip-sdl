@@ -21,48 +21,61 @@ func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient client.Contex
 	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
 
 	for _, feature := range featureCollection.Features {
-		if feature.Properties.Published {
-			if feature.Properties.Type == "Strandbad" {
-				beach, err := parsePublishedBeach(logger, feature)
+		if feature.Properties.Type == "Strandbad" {
+			beach, err := parseBeach(logger, feature)
+			if err != nil {
+				logger.Error().Err(err).Msg("failed to parse strandbad")
+				continue
+			}
+
+			entityID := fiware.BeachIDPrefix + beach.ID
+			
+			if okToDel, alreadyDeleted := shouldBeDeleted(feature); okToDel {
+				if !alreadyDeleted {
+					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
+					if err != nil {
+						logger.Info().Msgf("could not delete entity %s", entityID)
+					}
+				}
+				continue
+			}
+
+			attributes := convertDomainBeachToFiwareBeach(*beach)
+
+			fragment, _ := entities.NewFragment(attributes...)
+
+			_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
+
+			// Throttle so we dont kill the broker
+			time.Sleep(500 * time.Millisecond)
+
+			if err != nil {
+				if !errors.Is(err, ngsierrors.ErrNotFound) {
+					logger.Error().Err(err).Msg("failed to merge entity")
+					continue
+				}
+				entity, err := entities.New(entityID, fiware.BeachTypeName, attributes...)
 				if err != nil {
-					logger.Error().Err(err).Msg("failed to parse strandbad")
+					logger.Error().Err(err).Msg("entities.New failed")
 					continue
 				}
 
-				attributes := convertDomainBeachToFiwareBeach(*beach)
-
-				fragment, _ := entities.NewFragment(attributes...)
-
-				entityID := fiware.BeachIDPrefix + beach.ID
-
-				_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
+				res, err := ctxBrokerClient.CreateEntity(ctx, entity, headers)
 				if err != nil {
-					if !errors.Is(err, ngsierrors.ErrNotFound) {
-						logger.Error().Err(err).Msg("failed to merge entity")
-						continue
-					}
-					entity, err := entities.New(entityID, fiware.BeachTypeName, attributes...)
-					if err != nil {
-						logger.Error().Err(err).Msg("entities.New failed")
-						continue
-					}
-
-					res, err := ctxBrokerClient.CreateEntity(ctx, entity, headers)
-					if err != nil {
-						logger.Error().Err(err).Msg("failed to post beach to context broker")
-						continue
-					}
-
-					logger.Info().Msgf("posted beach %s to context broker", res.Location())
+					logger.Error().Err(err).Msg("failed to post beach to context broker")
+					continue
 				}
+
+				logger.Info().Msgf("posted beach %s to context broker", res.Location())
 			}
 		}
+
 	}
 
 	return nil
 }
 
-func parsePublishedBeach(log zerolog.Logger, feature domain.Feature) (*domain.Beach, error) {
+func parseBeach(log zerolog.Logger, feature domain.Feature) (*domain.Beach, error) {
 	log.Info().Msgf("found published beach %d %s\n", feature.ID, feature.Properties.Name)
 
 	beach := &domain.Beach{
@@ -71,7 +84,9 @@ func parsePublishedBeach(log zerolog.Logger, feature domain.Feature) (*domain.Be
 		Description: "",
 	}
 
-	var timeFormat string = "2006-01-02 15:04:05"
+	if !feature.Properties.Published {
+		return beach, nil
+	}
 
 	if feature.Properties.Created != nil {
 		created, err := time.Parse(timeFormat, *feature.Properties.Created)
@@ -188,7 +203,6 @@ var seeAlsoRefs map[int64]extraInfo = map[int64]extraInfo{
 }
 
 func convertDomainBeachToFiwareBeach(b domain.Beach) []entities.EntityDecoratorFunc {
-
 	properties := []entities.EntityDecoratorFunc{
 		entities.DefaultContext(),
 		decorators.Description(b.Description),

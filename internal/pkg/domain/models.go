@@ -49,6 +49,7 @@ type ExerciseTrail struct {
 	Source           string
 	Difficulty       float64
 	PaymentRequired  bool
+	SeeAlso          []string
 	ManagedBy        string
 	Owner            string
 }
@@ -75,6 +76,7 @@ type SportsVenue struct {
 	Name         string
 	Description  string
 	Category     []string
+	PublicAccess string
 	Geometry     MultiPolygon
 	DateCreated  time.Time
 	DateModified time.Time
@@ -109,6 +111,7 @@ type FeatureProps struct {
 	Fields    json.RawMessage `json:"fields"`
 	Created   *string         `json:"created,omitempty"`
 	Updated   *string         `json:"updated,omitempty"`
+	Deleted   *string         `json:"deleted,omitempty"`
 }
 
 type Feature struct {
