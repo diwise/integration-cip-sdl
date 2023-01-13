@@ -9,14 +9,24 @@ import (
 	"testing"
 
 	"github.com/diwise/context-broker/pkg/ngsild"
+	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	test "github.com/diwise/context-broker/pkg/test"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 )
 
+func TestThatMergeIsAttemptedBeforeCreate(t *testing.T) {
+	is, cw, ctxBroker := testSetup(t, 200, complex)
+
+	err := cw.getAndPublishCityWork(context.Background())
+	is.NoErr(err)
+	is.Equal(len(ctxBroker.MergeEntityCalls()), 2)
+	is.Equal(len(ctxBroker.CreateEntityCalls()), 2)
+}
+
 func TestSimpleModelCanBeCreated(t *testing.T) {
-	is, _ := testSetup(t, 0, "")
+	is, _, _ := testSetup(t, 0, "")
 	m, err := toModel([]byte(simple))
 
 	is.NoErr(err)
@@ -24,7 +34,7 @@ func TestSimpleModelCanBeCreated(t *testing.T) {
 }
 
 func TestComplexModelCanBeCreated(t *testing.T) {
-	is, _ := testSetup(t, 0, "")
+	is, _, _ := testSetup(t, 0, "")
 	m, _ := toModel([]byte(complex))
 
 	long, lat, err := m.Features[0].Geometry.AsPoint()
@@ -36,44 +46,35 @@ func TestComplexModelCanBeCreated(t *testing.T) {
 	is.True(m != nil)
 }
 
-func TestModelCanBeConvertedToCityWork(t *testing.T) {
-	is, _ := testSetup(t, 0, "")
-	m, _ := toModel([]byte(simple))
-
-	cw := toCityWorkModel(m.Features[0])
-
-	is.Equal(cw.ID(), "urn:ngsi-ld:CityWork:490")
-}
-
 func TestThatGetAndPublishWorksWithSimpleResponse(t *testing.T) {
-	is, cw := testSetup(t, http.StatusOK, simple)
+	is, cw, _ := testSetup(t, http.StatusOK, simple)
 
 	err := cw.getAndPublishCityWork(context.Background())
 	is.NoErr(err)
 }
 
 func TestThatGetAndPublishWorksWithComplexResponse(t *testing.T) {
-	is, cw := testSetup(t, http.StatusOK, complex)
+	is, cw, _ := testSetup(t, http.StatusOK, complex)
 
 	err := cw.getAndPublishCityWork(context.Background())
 	is.NoErr(err)
 }
 
 func TestThatGetAndPublishFailsOnInternalServerError(t *testing.T) {
-	is, cw := testSetup(t, http.StatusInternalServerError, "")
+	is, cw, _ := testSetup(t, http.StatusInternalServerError, "")
 
 	err := cw.getAndPublishCityWork(context.Background())
 	is.True(err != nil)
 }
 
 func TestThatGetAndPublishFailsOnImproperJSON(t *testing.T) {
-	is, cw := testSetup(t, http.StatusOK, complex+"}")
+	is, cw, _ := testSetup(t, http.StatusOK, complex+"}")
 
 	err := cw.getAndPublishCityWork(context.Background())
 	is.True(err != nil)
 }
 
-func testSetup(t *testing.T, statusCode int, body string) (*is.I, CityWorkSvc) {
+func testSetup(t *testing.T, statusCode int, body string) (*is.I, CityWorkSvc, *test.ContextBrokerClientMock) {
 	is := is.New(t)
 	s := setupMockServiceThatReturns(statusCode, body)
 	sdlc := sdlClient{
@@ -82,13 +83,16 @@ func testSetup(t *testing.T, statusCode int, body string) (*is.I, CityWorkSvc) {
 
 	ctxBroker := &test.ContextBrokerClientMock{
 		CreateEntityFunc: func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
-			return nil, fmt.Errorf("not implemented")
+			return &ngsild.CreateEntityResult{}, fmt.Errorf("not implemented")
+		},
+		MergeEntityFunc: func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
+			return nil, ngsierrors.ErrNotFound
 		},
 	}
 
 	cw := NewCityWorkService(zerolog.Logger{}, &sdlc, 1, ctxBroker)
 
-	return is, cw
+	return is, cw, ctxBroker
 }
 
 func setupMockServiceThatReturns(statusCode int, body string) *httptest.Server {
