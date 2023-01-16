@@ -25,7 +25,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-
 func TestTrailDataLoad(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, response)
 
@@ -100,7 +99,7 @@ func TestDeletedExerciseTrail(t *testing.T) {
 	client := NewClient("apiKey", server.URL, zerolog.Logger{})
 
 	featureCollection, err := client.Get(context.Background())
-	is.NoErr(err)	
+	is.NoErr(err)
 
 	var deletedDate = "2022-01-01 00:00:01"
 	featureCollection.Features[1].Properties.Deleted = &deletedDate
@@ -137,6 +136,9 @@ func testSetup(t *testing.T, requestBody string, responseCode int, responseBody 
 		},
 		MergeEntityFunc: func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
 			return nil, ngsierrors.ErrNotFound
+		},
+		DeleteEntityFunc: func(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error) {
+			return &ngsild.DeleteEntityResult{}, nil
 		},
 	}
 
