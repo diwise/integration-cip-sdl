@@ -63,7 +63,8 @@ func main() {
 	setupRouterAndWaitForConnections(logger, port)
 }
 
-// featureIsEnabled checks wether a given feature is enabled by exanding the feature name into <uppercase>_ENABLED and checking if the corresponding environment variable is set to true.
+// featureIsEnabled checks wether a given feature is enabled by exanding the feature name into <uppercase>_ENABLED
+// and checking if the corresponding environment variable is set to true.
 //
 //	Ex: citywork -> CITYWORK_ENABLED
 func featureIsEnabled(logger zerolog.Logger, feature string) bool {
