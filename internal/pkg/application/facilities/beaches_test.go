@@ -33,7 +33,7 @@ func TestDeletedBeach(t *testing.T) {
 	client := NewClient("apiKey", server.URL, zerolog.Logger{})
 
 	featureCollection, err := client.Get(context.Background())
-	is.NoErr(err)	
+	is.NoErr(err)
 
 	var deletedDate = "2022-01-01 00:00:01"
 	featureCollection.Features[0].Properties.Deleted = &deletedDate
