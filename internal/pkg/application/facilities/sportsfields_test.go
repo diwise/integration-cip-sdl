@@ -90,13 +90,10 @@ func TestSportsFieldHasManagedByAndOwnerProperties(t *testing.T) {
 func TestDeletedSportsField(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, sportsFieldResponse)
 
-	ctxBrokerMock.DeleteEntityFunc = func(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error) {
-		return &ngsild.DeleteEntityResult{}, nil
-	}
-
 	fc := domain.FeatureCollection{}
 	json.Unmarshal([]byte(sportsFieldResponse), &fc)
 
+	fc.Features[0].ID = 789 // id needs to be unique for each test
 	var deletedDate = "2022-01-01 00:00:01"
 	fc.Features[0].Properties.Deleted = &deletedDate
 
@@ -111,13 +108,10 @@ func TestDeletedSportsField(t *testing.T) {
 func TestUnpublishedSportsField(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, sportsFieldResponse)
 
-	ctxBrokerMock.DeleteEntityFunc = func(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error) {
-		return &ngsild.DeleteEntityResult{}, nil
-	}
-
 	fc := domain.FeatureCollection{}
 	json.Unmarshal([]byte(sportsFieldResponse), &fc)
 
+	fc.Features[0].ID = 456 // id needs to be unique for each test
 	fc.Features[0].Properties.Published = false
 
 	ctx := context.Background()
@@ -131,13 +125,10 @@ func TestUnpublishedSportsField(t *testing.T) {
 func TestDeletedSportsFieldOnlyOnce(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, sportsFieldResponse)
 
-	ctxBrokerMock.DeleteEntityFunc = func(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error) {
-		return &ngsild.DeleteEntityResult{}, nil
-	}
-
 	fc := domain.FeatureCollection{}
 	json.Unmarshal([]byte(sportsFieldResponse), &fc)
 
+	fc.Features[0].ID = 123 // id needs to be unique for each test
 	var deletedDate = "2022-01-01 00:00:01"
 	fc.Features[0].Properties.Deleted = &deletedDate
 

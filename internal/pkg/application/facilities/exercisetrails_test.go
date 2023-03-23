@@ -145,6 +145,9 @@ func testSetup(t *testing.T, requestBody string, responseCode int, responseBody 
 		MergeEntityFunc: func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
 			return nil, ngsierrors.ErrNotFound
 		},
+		DeleteEntityFunc: func(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error) {
+			return &ngsild.DeleteEntityResult{}, nil
+		},
 	}
 
 	return is, ctxBroker, mockServer

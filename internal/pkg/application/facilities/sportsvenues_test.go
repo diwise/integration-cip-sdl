@@ -96,10 +96,6 @@ func TestSportsVenueContainsManagedByAndOwnerProperties(t *testing.T) {
 func TestDeletedSportsVenue(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, sportsVenueResponse)
 
-	ctxBrokerMock.DeleteEntityFunc = func(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error) {
-		return &ngsild.DeleteEntityResult{}, nil
-	}
-
 	fc := domain.FeatureCollection{}
 	json.Unmarshal([]byte(sportsVenueResponse), &fc)
 
