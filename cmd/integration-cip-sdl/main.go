@@ -107,6 +107,7 @@ func setupRouterAndWaitForConnections(logger zerolog.Logger, port string) {
 func SetupAndRunFacilities(url, apiKey string, timeInterval int, logger zerolog.Logger, ctx context.Context, ctxBroker client.ContextBrokerClient) facilities.Client {
 
 	fc := facilities.NewClient(apiKey, url, logger)
+	storage := facilities.NewStorage(ctx)
 
 	for {
 		features, err := fc.Get(ctx)
@@ -117,19 +118,19 @@ func SetupAndRunFacilities(url, apiKey string, timeInterval int, logger zerolog.
 			logger.Error().Err(err).Msgf("failed to retrieve facilities information (retrying in %d minutes)", retryInterval)
 			sleepDuration = time.Duration(retryInterval) * time.Minute
 		} else {
-			err = facilities.StoreTrailsFromSource(logger, ctxBroker, ctx, url, *features)
+			err = storage.StoreTrailsFromSource(ctx, ctxBroker, url, *features)
 			if err != nil {
 				logger.Error().Err(err).Msg("failed to store exercise trails information")
 			}
-			err = facilities.StoreBeachesFromSource(logger, ctxBroker, ctx, url, *features)
+			err = storage.StoreBeachesFromSource(ctx, ctxBroker, url, *features)
 			if err != nil {
 				logger.Error().Err(err).Msg("failed to store beaches information")
 			}
-			err = facilities.StoreSportsFieldsFromSource(logger, ctxBroker, ctx, url, *features)
+			err = storage.StoreSportsFieldsFromSource(ctx, ctxBroker, url, *features)
 			if err != nil {
 				logger.Error().Err(err).Msg("failed to store sports fields information")
 			}
-			err = facilities.StoreSportsVenuesFromSource(logger, ctxBroker, ctx, url, *features)
+			err = storage.StoreSportsVenuesFromSource(ctx, ctxBroker, url, *features)
 			if err != nil {
 				logger.Error().Err(err).Msg("failed to store sports venues information")
 			}

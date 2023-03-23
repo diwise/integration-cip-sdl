@@ -17,11 +17,14 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
 	"github.com/diwise/context-broker/pkg/ngsild/types/relationships"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
 var ErrSportsFieldIsOfIgnoredType error = errors.New("sportsfield is of non supported type")
 
-func StoreSportsFieldsFromSource(logger zerolog.Logger, ctxBrokerClient client.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection domain.FeatureCollection) error {
+func (s *storageImpl) StoreSportsFieldsFromSource(ctx context.Context, ctxBrokerClient client.ContextBrokerClient, sourceURL string, featureCollection domain.FeatureCollection) error {
+
+	logger := logging.GetFromContext(ctx)
 
 	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
 
@@ -37,7 +40,7 @@ func StoreSportsFieldsFromSource(logger zerolog.Logger, ctxBrokerClient client.C
 
 			entityID := diwise.SportsFieldIDPrefix + sportsField.ID
 
-			if okToDel, alreadyDeleted := shouldBeDeleted(feature); okToDel {
+			if okToDel, alreadyDeleted := s.shouldBeDeleted(feature); okToDel {
 				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {

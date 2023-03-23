@@ -14,11 +14,14 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/rs/zerolog"
 )
 
-func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient client.ContextBrokerClient, ctx context.Context, sourceURL string, featureCollection domain.FeatureCollection) error {
+func (s *storageImpl) StoreBeachesFromSource(ctx context.Context, ctxBrokerClient client.ContextBrokerClient, sourceURL string, featureCollection domain.FeatureCollection) error {
 	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
+
+	logger := logging.GetFromContext(ctx)
 
 	for _, feature := range featureCollection.Features {
 		if feature.Properties.Type == "Strandbad" {
@@ -29,8 +32,8 @@ func StoreBeachesFromSource(logger zerolog.Logger, ctxBrokerClient client.Contex
 			}
 
 			entityID := fiware.BeachIDPrefix + beach.ID
-			
-			if okToDel, alreadyDeleted := shouldBeDeleted(feature); okToDel {
+
+			if okToDel, alreadyDeleted := s.shouldBeDeleted(feature); okToDel {
 				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {

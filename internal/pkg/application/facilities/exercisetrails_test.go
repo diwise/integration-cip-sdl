@@ -18,13 +18,11 @@ import (
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
-
 
 func TestTrailDataLoad(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, response)
@@ -32,7 +30,10 @@ func TestTrailDataLoad(t *testing.T) {
 	fc := domain.FeatureCollection{}
 	json.Unmarshal([]byte(response), &fc)
 
-	err := StoreTrailsFromSource(log.With().Logger(), ctxBrokerMock, context.Background(), server.URL, fc)
+	ctx := context.Background()
+	storage := NewStorage(ctx)
+	err := storage.StoreTrailsFromSource(ctx, ctxBrokerMock, server.URL, fc)
+
 	is.NoErr(err)
 	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 2)
 }
@@ -49,7 +50,9 @@ func TestExerciseTrail(t *testing.T) {
 	featureCollection, err := client.Get(context.Background())
 	is.NoErr(err)
 
-	err = StoreTrailsFromSource(zerolog.Logger{}, ctxBrokerMock, context.Background(), server.URL, *featureCollection)
+	ctx := context.Background()
+	storage := NewStorage(ctx)
+	err = storage.StoreTrailsFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
 	is.NoErr(err)
 
 	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 2)
@@ -77,7 +80,9 @@ func TestExerciseTrailContainsManagedByAndOwnerProperties(t *testing.T) {
 	featureCollection, err := client.Get(context.Background())
 	is.NoErr(err)
 
-	err = StoreTrailsFromSource(zerolog.Logger{}, ctxBrokerMock, context.Background(), server.URL, *featureCollection)
+	ctx := context.Background()
+	storage := NewStorage(ctx)
+	err = storage.StoreTrailsFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
 	is.NoErr(err)
 
 	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 2)
@@ -100,14 +105,16 @@ func TestDeletedExerciseTrail(t *testing.T) {
 	client := NewClient("apiKey", server.URL, zerolog.Logger{})
 
 	featureCollection, err := client.Get(context.Background())
-	is.NoErr(err)	
+	is.NoErr(err)
 
 	var deletedDate = "2022-01-01 00:00:01"
 	featureCollection.Features[1].Properties.Deleted = &deletedDate
 
-	err = StoreTrailsFromSource(zerolog.Logger{}, ctxBrokerMock, context.Background(), server.URL, *featureCollection)
-	is.NoErr(err)
+	ctx := context.Background()
+	storage := NewStorage(ctx)
+	err = storage.StoreTrailsFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
 
+	is.NoErr(err)
 	is.Equal(len(ctxBrokerMock.DeleteEntityCalls()), 1)
 }
 

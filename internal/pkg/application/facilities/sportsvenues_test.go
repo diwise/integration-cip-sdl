@@ -11,7 +11,6 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 const sportsVenueResponse string = `{"type":"FeatureCollection","features":[
@@ -32,7 +31,10 @@ func TestSportsVenueLoad(t *testing.T) {
 	fc := domain.FeatureCollection{}
 	json.Unmarshal([]byte(sportsVenueResponse), &fc)
 
-	err := StoreSportsVenuesFromSource(log.With().Logger(), ctxBrokerMock, context.Background(), server.URL, fc)
+	ctx := context.Background()
+	storage := NewStorage(ctx)
+	err := storage.StoreSportsVenuesFromSource(context.Background(), ctxBrokerMock, server.URL, fc)
+
 	is.NoErr(err)
 	is.Equal(len(ctxBrokerMock.MergeEntityCalls()), 1)
 }
@@ -50,7 +52,9 @@ func TestSportsVenue(t *testing.T) {
 	featureCollection, err := client.Get(context.Background())
 	is.NoErr(err)
 
-	err = StoreSportsVenuesFromSource(zerolog.Logger{}, ctxBrokerMock, context.Background(), server.URL, *featureCollection)
+	ctx := context.Background()
+	storage := NewStorage(ctx)
+	err = storage.StoreSportsVenuesFromSource(context.Background(), ctxBrokerMock, server.URL, *featureCollection)
 	is.NoErr(err)
 
 	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
@@ -71,10 +75,12 @@ func TestSportsVenueContainsManagedByAndOwnerProperties(t *testing.T) {
 
 	client := NewClient("apiKey", server.URL, zerolog.Logger{})
 
-	featureCollection, err := client.Get(context.Background())
+	ctx := context.Background()
+	featureCollection, err := client.Get(ctx)
 	is.NoErr(err)
 
-	err = StoreSportsVenuesFromSource(zerolog.Logger{}, ctxBrokerMock, context.Background(), server.URL, *featureCollection)
+	storage := NewStorage(ctx)
+	err = storage.StoreSportsVenuesFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
 	is.NoErr(err)
 
 	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
@@ -100,7 +106,9 @@ func TestDeletedSportsVenue(t *testing.T) {
 	var deletedDate = "2022-01-01 00:00:01"
 	fc.Features[0].Properties.Deleted = &deletedDate
 
-	err := StoreSportsVenuesFromSource(log.With().Logger(), ctxBrokerMock, context.Background(), server.URL, fc)
+	ctx := context.Background()
+	storage := NewStorage(ctx)
+	err := storage.StoreSportsVenuesFromSource(ctx, ctxBrokerMock, server.URL, fc)
 	is.NoErr(err)
 	is.Equal(len(ctxBrokerMock.DeleteEntityCalls()), 1)
 }

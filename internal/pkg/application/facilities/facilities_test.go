@@ -1,6 +1,7 @@
 package facilities
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -16,19 +17,22 @@ func TestShouldBeDeleted(t *testing.T) {
 		Deleted: &d,
 	}
 
+	storage := NewStorage(context.Background())
+	impl := storage.(*storageImpl)
+
 	f := domain.Feature{ID: 1, Properties: props}
 
-	deleted[1] = time.Now().UTC()
+	impl.deleted[1] = time.Now().UTC()
 
-	ok, alreadyDeleted := shouldBeDeleted(f)
+	ok, alreadyDeleted := impl.shouldBeDeleted(f)
 
 	is.True(ok)
 	is.True(alreadyDeleted)
 
-	deleted[1] = time.Now().UTC().Add(-1 * 25 * time.Hour)
+	impl.deleted[1] = time.Now().UTC().Add(-1 * 25 * time.Hour)
 
-	ok, alreadyDeleted = shouldBeDeleted(f)
+	ok, alreadyDeleted = impl.shouldBeDeleted(f)
 
 	is.True(ok)
-	is.True(!alreadyDeleted)	
+	is.True(!alreadyDeleted)
 }

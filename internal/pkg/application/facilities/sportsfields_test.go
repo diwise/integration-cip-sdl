@@ -11,7 +11,6 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 const sportsFieldResponse string = `{"type":"FeatureCollection","features":[
@@ -24,7 +23,10 @@ func TestSportsFieldLoad(t *testing.T) {
 	fc := domain.FeatureCollection{}
 	json.Unmarshal([]byte(sportsFieldResponse), &fc)
 
-	err := StoreSportsFieldsFromSource(log.With().Logger(), ctxBrokerMock, context.Background(), server.URL, fc)
+	ctx := context.Background()
+	storage := NewStorage(ctx)
+	err := storage.StoreSportsFieldsFromSource(ctx, ctxBrokerMock, server.URL, fc)
+
 	is.NoErr(err)
 	is.Equal(len(ctxBrokerMock.MergeEntityCalls()), 1)
 }
@@ -42,7 +44,9 @@ func TestSportsField(t *testing.T) {
 	featureCollection, err := client.Get(context.Background())
 	is.NoErr(err)
 
-	err = StoreSportsFieldsFromSource(zerolog.Logger{}, ctxBrokerMock, context.Background(), server.URL, *featureCollection)
+	ctx := context.Background()
+	storage := NewStorage(ctx)
+	err = storage.StoreSportsFieldsFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
 	is.NoErr(err)
 
 	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
@@ -68,7 +72,9 @@ func TestSportsFieldHasManagedByAndOwnerProperties(t *testing.T) {
 	featureCollection, err := client.Get(context.Background())
 	is.NoErr(err)
 
-	err = StoreSportsFieldsFromSource(zerolog.Logger{}, ctxBrokerMock, context.Background(), server.URL, *featureCollection)
+	ctx := context.Background()
+	storage := NewStorage(ctx)
+	err = storage.StoreSportsFieldsFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
 	is.NoErr(err)
 
 	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
@@ -94,7 +100,10 @@ func TestDeletedSportsField(t *testing.T) {
 	var deletedDate = "2022-01-01 00:00:01"
 	fc.Features[0].Properties.Deleted = &deletedDate
 
-	err := StoreSportsFieldsFromSource(log.With().Logger(), ctxBrokerMock, context.Background(), server.URL, fc)
+	ctx := context.Background()
+	storage := NewStorage(ctx)
+	err := storage.StoreSportsFieldsFromSource(ctx, ctxBrokerMock, server.URL, fc)
+
 	is.NoErr(err)
 	is.Equal(len(ctxBrokerMock.DeleteEntityCalls()), 1)
 }
@@ -108,10 +117,13 @@ func TestUnpublishedSportsField(t *testing.T) {
 
 	fc := domain.FeatureCollection{}
 	json.Unmarshal([]byte(sportsFieldResponse), &fc)
-	
+
 	fc.Features[0].Properties.Published = false
 
-	err := StoreSportsFieldsFromSource(log.With().Logger(), ctxBrokerMock, context.Background(), server.URL, fc)
+	ctx := context.Background()
+	storage := NewStorage(ctx)
+	err := storage.StoreSportsFieldsFromSource(ctx, ctxBrokerMock, server.URL, fc)
+
 	is.NoErr(err)
 	is.Equal(len(ctxBrokerMock.DeleteEntityCalls()), 1)
 }
@@ -129,14 +141,16 @@ func TestDeletedSportsFieldOnlyOnce(t *testing.T) {
 	var deletedDate = "2022-01-01 00:00:01"
 	fc.Features[0].Properties.Deleted = &deletedDate
 
-	err := StoreSportsFieldsFromSource(log.With().Logger(), ctxBrokerMock, context.Background(), server.URL, fc)
+	ctx := context.Background()
+	storage := NewStorage(ctx)
+	err := storage.StoreSportsFieldsFromSource(ctx, ctxBrokerMock, server.URL, fc)
 	is.NoErr(err)
 
 	is.Equal(len(ctxBrokerMock.DeleteEntityCalls()), 1)
 
 	// "store" again, this time no delete should be executed
-	err = StoreSportsFieldsFromSource(log.With().Logger(), ctxBrokerMock, context.Background(), server.URL, fc)
+	err = storage.StoreSportsFieldsFromSource(ctx, ctxBrokerMock, server.URL, fc)
 	is.NoErr(err)
-	
+
 	is.Equal(len(ctxBrokerMock.DeleteEntityCalls()), 1)
 }
