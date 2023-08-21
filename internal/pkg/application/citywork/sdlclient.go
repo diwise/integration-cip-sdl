@@ -71,7 +71,12 @@ func (c *sdlClient) Get(ctx context.Context) (*sdlResponse, error) {
 		return nil, err
 	}
 
-	log.Info().Msgf("received response: %s...", string(body)[:100])
+	strBody := string(body)
+	if len(strBody) > 100 {
+		strBody = strBody[:100]
+	}
+
+	log.Debug().Msgf("received response: %s...", strBody)
 
 	var m sdlResponse
 	err = json.Unmarshal(body, &m)
