@@ -16,8 +16,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	test "github.com/diwise/context-broker/pkg/test"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
-	"github.com/matryer/is"
-	"github.com/rs/zerolog"
+	"github.com/matryer/is"	
 )
 
 func TestMain(m *testing.M) {
@@ -45,7 +44,7 @@ func TestExerciseTrail(t *testing.T) {
 		return &ngsild.CreateEntityResult{}, nil
 	}
 
-	client := NewClient("apiKey", server.URL, zerolog.Logger{})
+	client := NewClient("apiKey", server.URL)
 
 	featureCollection, err := client.Get(context.Background())
 	is.NoErr(err)
@@ -75,7 +74,7 @@ func TestExerciseTrailContainsManagedByAndOwnerProperties(t *testing.T) {
 		return &ngsild.CreateEntityResult{}, nil
 	}
 
-	client := NewClient("apiKey", server.URL, zerolog.Logger{})
+	client := NewClient("apiKey", server.URL)
 
 	featureCollection, err := client.Get(context.Background())
 	is.NoErr(err)
@@ -102,7 +101,7 @@ func TestDeletedExerciseTrail(t *testing.T) {
 		return &ngsild.DeleteEntityResult{}, nil
 	}
 
-	client := NewClient("apiKey", server.URL, zerolog.Logger{})
+	client := NewClient("apiKey", server.URL)
 
 	featureCollection, err := client.Get(context.Background())
 	is.NoErr(err)

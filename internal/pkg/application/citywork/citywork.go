@@ -21,9 +21,8 @@ type CityWorkSvc interface {
 	getAndPublishCityWork(ctx context.Context) error
 }
 
-func NewCityWorkService(log zerolog.Logger, s SdlClient, timeInterval int, c client.ContextBrokerClient) CityWorkSvc {
+func NewCityWorkService(s SdlClient, timeInterval int, c client.ContextBrokerClient) CityWorkSvc {
 	return &cw{
-		log:           log,
 		sdlClient:     s,
 		timeInterval:  timeInterval,
 		contextbroker: c,

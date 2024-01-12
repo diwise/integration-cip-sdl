@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -17,7 +18,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/go-chi/chi"
 	"github.com/rs/cors"
-	"github.com/rs/zerolog"
 )
 
 const serviceName string = "integration-cip-sdl"
@@ -28,37 +28,39 @@ func main() {
 	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
 	defer cleanup()
 
-	contextBrokerURL := env.GetVariableOrDie(logger, "CONTEXT_BROKER_URL", "Context Broker URL")
+	contextBrokerURL := env.GetVariableOrDie(ctx, "CONTEXT_BROKER_URL", "Context Broker URL")
 
 	ctxBroker := client.NewContextBrokerClient(contextBrokerURL, client.Debug("true"))
 
 	if featureIsEnabled(logger, "facilities") {
-		facilitiesURL := env.GetVariableOrDie(logger, "FACILITIES_URL", "Facilities URL")
-		facilitiesApiKey := env.GetVariableOrDie(logger, "FACILITIES_API_KEY", "Facilities Api Key")
-		timeInterval := env.GetVariableOrDefault(logger, "FACILITIES_POLLING_INTERVAL", "58")
+		facilitiesURL := env.GetVariableOrDie(ctx, "FACILITIES_URL", "Facilities URL")
+		facilitiesApiKey := env.GetVariableOrDie(ctx, "FACILITIES_API_KEY", "Facilities Api Key")
+		timeInterval := env.GetVariableOrDefault(ctx, "FACILITIES_POLLING_INTERVAL", "58")
 
 		parsedTime, err := strconv.ParseInt(timeInterval, 0, 64)
 		if err != nil {
-			logger.Fatal().Err(err).Msg("FACILITIES_POLLING_INTERVAL must be set to valid integer")
+			logger.Error("FACILITIES_POLLING_INTERVAL must be set to valid integer", "err", err.Error())
+			os.Exit(1)
 		}
 
 		go SetupAndRunFacilities(facilitiesURL, facilitiesApiKey, int(parsedTime), logger, ctx, ctxBroker)
 	}
 
 	if featureIsEnabled(logger, "citywork") {
-		sundsvallvaxerURL := env.GetVariableOrDie(logger, "SDL_KARTA_URL", "Sundsvall växer URL")
-		timeInterval := env.GetVariableOrDefault(logger, "CITYWORK_POLLING_INTERVAL", "59")
+		sundsvallvaxerURL := env.GetVariableOrDie(ctx, "SDL_KARTA_URL", "Sundsvall växer URL")
+		timeInterval := env.GetVariableOrDefault(ctx, "CITYWORK_POLLING_INTERVAL", "59")
 
 		parsedTime, err := strconv.ParseInt(timeInterval, 0, 64)
 		if err != nil {
-			logger.Fatal().Err(err).Msg("CITYWORK_POLLING_INTERVAL must be set to valid integer")
+			logger.Error("CITYWORK_POLLING_INTERVAL must be set to valid integer", "err", err.Error())
+			os.Exit(1)
 		}
 
-		cw := SetupCityWorkService(logger, sundsvallvaxerURL, int(parsedTime), ctxBroker)
+		cw := SetupCityWorkService(ctx, sundsvallvaxerURL, int(parsedTime), ctxBroker)
 		go cw.Start(ctx)
 	}
 
-	port := env.GetVariableOrDefault(logger, "SERVICE_PORT", "8080")
+	port := env.GetVariableOrDefault(ctx, "SERVICE_PORT", "8080")
 
 	setupRouterAndWaitForConnections(logger, port)
 }
@@ -67,26 +69,26 @@ func main() {
 // and checking if the corresponding environment variable is set to true.
 //
 //	Ex: citywork -> CITYWORK_ENABLED
-func featureIsEnabled(logger zerolog.Logger, feature string) bool {
+func featureIsEnabled(logger *slog.Logger, feature string) bool {
 	featureKey := fmt.Sprintf("%s_ENABLED", strings.ToUpper(feature))
 	isEnabled := os.Getenv(featureKey) == "true"
 
 	if isEnabled {
-		logger.Info().Msgf("feature %s is enabled", feature)
+		logger.Info("feature is enabled", "feature", feature)
 	} else {
-		logger.Warn().Msgf("feature %s is not enabled", feature)
+		logger.Warn("feature is not enabled", "feature", feature)
 	}
 
 	return isEnabled
 }
 
-func SetupCityWorkService(log zerolog.Logger, cityWorkURL string, timeInterval int, ctxBroker client.ContextBrokerClient) citywork.CityWorkSvc {
-	c := citywork.NewSdlClient(cityWorkURL, log)
+func SetupCityWorkService(ctx context.Context, cityWorkURL string, timeInterval int, ctxBroker client.ContextBrokerClient) citywork.CityWorkSvc {
+	c := citywork.NewSdlClient(cityWorkURL)
 
-	return citywork.NewCityWorkService(log, c, timeInterval, ctxBroker)
+	return citywork.NewCityWorkService(c, timeInterval, ctxBroker)
 }
 
-func setupRouterAndWaitForConnections(logger zerolog.Logger, port string) {
+func setupRouterAndWaitForConnections(logger *slog.Logger, port string) {
 	r := chi.NewRouter()
 	r.Use(cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
@@ -100,13 +102,13 @@ func setupRouterAndWaitForConnections(logger zerolog.Logger, port string) {
 
 	err := http.ListenAndServe(":"+port, r)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to start router")
+		logger.Error("failed to start router", "err", err.Error())
 	}
 }
 
-func SetupAndRunFacilities(url, apiKey string, timeInterval int, logger zerolog.Logger, ctx context.Context, ctxBroker client.ContextBrokerClient) facilities.Client {
+func SetupAndRunFacilities(url, apiKey string, timeInterval int, logger *slog.Logger, ctx context.Context, ctxBroker client.ContextBrokerClient) facilities.Client {
 
-	fc := facilities.NewClient(apiKey, url, logger)
+	fc := facilities.NewClient(apiKey, url)
 	storage := facilities.NewStorage(ctx)
 
 	for {
@@ -115,24 +117,25 @@ func SetupAndRunFacilities(url, apiKey string, timeInterval int, logger zerolog.
 
 		if err != nil {
 			const retryInterval int = 2
-			logger.Error().Err(err).Msgf("failed to retrieve facilities information (retrying in %d minutes)", retryInterval)
+			logger.Error("failed to retrieve facilities information", "err", err.Error())
+			logger.Info("retrying...", "retryInterval", retryInterval)
 			sleepDuration = time.Duration(retryInterval) * time.Minute
 		} else {
 			err = storage.StoreTrailsFromSource(ctx, ctxBroker, url, *features)
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to store exercise trails information")
+				logger.Error("failed to store exercise trails information", "err", err.Error())
 			}
 			err = storage.StoreBeachesFromSource(ctx, ctxBroker, url, *features)
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to store beaches information")
+				logger.Error("failed to store beaches information", "err", err.Error())
 			}
 			err = storage.StoreSportsFieldsFromSource(ctx, ctxBroker, url, *features)
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to store sports fields information")
+				logger.Error("failed to store sports fields information", "err", err.Error())
 			}
 			err = storage.StoreSportsVenuesFromSource(ctx, ctxBroker, url, *features)
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to store sports venues information")
+				logger.Error("failed to store sports venues information", "err", err.Error())
 			}
 		}
 

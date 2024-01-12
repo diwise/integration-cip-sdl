@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog"
+	
 
 	"github.com/diwise/context-broker/pkg/datamodels/diwise"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
@@ -37,7 +38,7 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 		if isSupportedType(feature.Properties.Type) {
 			exerciseTrail, err := parseExerciseTrail(logger, feature)
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to parse motionsspår")
+				logger.Error("failed to parse motionsspår", "err", err.Error())
 				continue
 			}
 
@@ -47,7 +48,7 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {
-						logger.Info().Msgf("could not delete entity %s", entityID)
+						logger.Info(fmt.Sprintf("could not delete entity %s", entityID))
 					}
 				}
 				continue
@@ -66,18 +67,18 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 
 			if err != nil {
 				if !errors.Is(err, ngsierrors.ErrNotFound) {
-					logger.Error().Err(err).Msg("failed to merge entity")
+					logger.Error("failed to merge entity", "err", err.Error())
 					continue
 				}
 				entity, err := entities.New(entityID, diwise.ExerciseTrailTypeName, attributes...)
 				if err != nil {
-					logger.Error().Err(err).Msg("entities.New failed")
+					logger.Error("entities.New failed", "err", err.Error())
 					continue
 				}
 
 				_, err = ctxBrokerClient.CreateEntity(ctx, entity, headers)
 				if err != nil {
-					logger.Error().Err(err).Msg("failed to post exercise trail to context broker")
+					logger.Error("failed to post exercise trail to context broker", "err", err.Error())
 					continue
 				}
 			}
@@ -87,8 +88,8 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 	return nil
 }
 
-func parseExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.ExerciseTrail, error) {
-	log.Info().Msgf("found published exercise trail %d %s", feature.ID, feature.Properties.Name)
+func parseExerciseTrail(log *slog.Logger, feature domain.Feature) (*domain.ExerciseTrail, error) {
+	log.Info(fmt.Sprintf("found published exercise trail %d %s", feature.ID, feature.Properties.Name))
 
 	trail := &domain.ExerciseTrail{
 		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),

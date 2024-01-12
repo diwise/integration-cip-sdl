@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog"
+
 
 	"github.com/diwise/context-broker/pkg/datamodels/diwise"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
@@ -38,7 +39,7 @@ func (s *storageImpl) StoreSportsVenuesFromSource(ctx context.Context, ctxBroker
 			sportsVenue, err := parseSportsVenue(logger, feature)
 			if err != nil {
 				if !errors.Is(err, ErrSportsVenueIsOfIgnoredType) {
-					logger.Error().Err(err).Msg("failed to parse feature")
+					logger.Error("failed to parse feature", "err", err.Error())
 				}
 				continue
 			}
@@ -49,7 +50,7 @@ func (s *storageImpl) StoreSportsVenuesFromSource(ctx context.Context, ctxBroker
 				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {
-						logger.Info().Msgf("could not delete entity %s", entityID)
+						logger.Info(fmt.Sprintf("could not delete entity %s", entityID))
 					}
 				}
 				continue
@@ -68,18 +69,18 @@ func (s *storageImpl) StoreSportsVenuesFromSource(ctx context.Context, ctxBroker
 
 			if err != nil {
 				if !errors.Is(err, ngsierrors.ErrNotFound) {
-					logger.Error().Err(err).Msg("failed to merge entity")
+					logger.Error("failed to merge entity", "err", err.Error())
 					continue
 				}
 				entity, err := entities.New(entityID, diwise.SportsVenueTypeName, attributes...)
 				if err != nil {
-					logger.Error().Err(err).Msg("entities.New failed")
+					logger.Error("entities.New failed", "err", err.Error())
 					continue
 				}
 
 				_, err = ctxBrokerClient.CreateEntity(ctx, entity, headers)
 				if err != nil {
-					logger.Error().Err(err).Msg("failed to post sports venue to context broker")
+					logger.Error("failed to post sports venue to context broker", "err", err.Error())
 					continue
 				}
 			}
@@ -89,8 +90,8 @@ func (s *storageImpl) StoreSportsVenuesFromSource(ctx context.Context, ctxBroker
 	return nil
 }
 
-func parseSportsVenue(log zerolog.Logger, feature domain.Feature) (*domain.SportsVenue, error) {
-	log.Info().Msgf("found published sports venue %d %s", feature.ID, feature.Properties.Name)
+func parseSportsVenue(log *slog.Logger, feature domain.Feature) (*domain.SportsVenue, error) {
+	log.Info(fmt.Sprintf("found published sports venue %d %s", feature.ID, feature.Properties.Name))
 
 	sportsVenue := &domain.SportsVenue{
 		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/diwise/context-broker/pkg/datamodels/fiware"
@@ -15,7 +16,6 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/rs/zerolog"
 )
 
 func (s *storageImpl) StoreBeachesFromSource(ctx context.Context, ctxBrokerClient client.ContextBrokerClient, sourceURL string, featureCollection domain.FeatureCollection) error {
@@ -27,7 +27,7 @@ func (s *storageImpl) StoreBeachesFromSource(ctx context.Context, ctxBrokerClien
 		if feature.Properties.Type == "Strandbad" {
 			beach, err := parseBeach(logger, feature)
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to parse strandbad")
+				logger.Error("failed to parse strandbad", "err", err.Error())
 				continue
 			}
 
@@ -37,7 +37,7 @@ func (s *storageImpl) StoreBeachesFromSource(ctx context.Context, ctxBrokerClien
 				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {
-						logger.Info().Msgf("could not delete entity %s", entityID)
+						logger.Info("could not delete entity", "entity_id", entityID)
 					}
 				}
 				continue
@@ -54,22 +54,22 @@ func (s *storageImpl) StoreBeachesFromSource(ctx context.Context, ctxBrokerClien
 
 			if err != nil {
 				if !errors.Is(err, ngsierrors.ErrNotFound) {
-					logger.Error().Err(err).Msg("failed to merge entity")
+					logger.Error("failed to merge entity", "err", err.Error())
 					continue
 				}
 				entity, err := entities.New(entityID, fiware.BeachTypeName, attributes...)
 				if err != nil {
-					logger.Error().Err(err).Msg("entities.New failed")
+					logger.Error("entities.New failed", "err", err.Error())
 					continue
 				}
 
 				res, err := ctxBrokerClient.CreateEntity(ctx, entity, headers)
 				if err != nil {
-					logger.Error().Err(err).Msg("failed to post beach to context broker")
+					logger.Error("failed to post beach to context broker", "err", err.Error())
 					continue
 				}
 
-				logger.Info().Msgf("posted beach %s to context broker", res.Location())
+				logger.Info(fmt.Sprint("posted beach %s to context broker", res.Location()))
 			}
 		}
 
@@ -78,8 +78,8 @@ func (s *storageImpl) StoreBeachesFromSource(ctx context.Context, ctxBrokerClien
 	return nil
 }
 
-func parseBeach(log zerolog.Logger, feature domain.Feature) (*domain.Beach, error) {
-	log.Info().Msgf("found published beach %d %s\n", feature.ID, feature.Properties.Name)
+func parseBeach(log *slog.Logger, feature domain.Feature) (*domain.Beach, error) {
+	log.Info(fmt.Sprintf("found published beach %d %s\n", feature.ID, feature.Properties.Name))
 
 	beach := &domain.Beach{
 		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
@@ -122,7 +122,7 @@ func parseBeach(log zerolog.Logger, feature domain.Feature) (*domain.Beach, erro
 		} else if field.ID == 230 {
 			sensor := "se:servanet:lora:" + string(field.Value[1:len(field.Value)-1])
 			beach.SensorID = &sensor
-			log.Info().Msgf("assigning sensor %s to beach %s", sensor, beach.ID)
+			log.Info(fmt.Sprintf("assigning sensor %s to beach %s", sensor, beach.ID))
 		}
 	}
 
