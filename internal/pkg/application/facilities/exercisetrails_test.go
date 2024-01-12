@@ -16,7 +16,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	test "github.com/diwise/context-broker/pkg/test"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
-	"github.com/matryer/is"	
+	"github.com/matryer/is"
 )
 
 func TestMain(m *testing.M) {

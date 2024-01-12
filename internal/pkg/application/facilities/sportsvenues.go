@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-
-
 	"github.com/diwise/context-broker/pkg/datamodels/diwise"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
