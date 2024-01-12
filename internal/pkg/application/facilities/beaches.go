@@ -69,7 +69,7 @@ func (s *storageImpl) StoreBeachesFromSource(ctx context.Context, ctxBrokerClien
 					continue
 				}
 
-				logger.Info(fmt.Sprint("posted beach %s to context broker", res.Location()))
+				logger.Info(fmt.Sprintf("posted beach %s to context broker", res.Location()))
 			}
 		}
 
