@@ -39,8 +39,8 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 
 	isSupportedType := func(t string) bool {
 		type StringSet map[string]struct{}
-		_, isSupported := StringSet{BikeTrail: {}, ExerciseTrail: {}, IceSkatingTrail: {}, SkiLift: {}, SkiSlope: {}}[t]
-		return isSupported
+		_, typeIsInSet := StringSet{BikeTrail: {}, ExerciseTrail: {}, IceSkatingTrail: {}, SkiLift: {}, SkiSlope: {}}[t]
+		return typeIsInSet
 	}
 
 	for _, feature := range featureCollection.Features {
