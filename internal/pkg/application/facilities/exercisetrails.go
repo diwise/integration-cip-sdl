@@ -23,6 +23,14 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
+const (
+	BikeTrail       string = "Cykelled"
+	ExerciseTrail   string = "Motionsspår"
+	IceSkatingTrail string = "Långfärdsskridskoled"
+	SkiLift         string = "Skidlift"
+	SkiSlope        string = "Skidpist"
+)
+
 func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient client.ContextBrokerClient, sourceURL string, featureCollection domain.FeatureCollection) error {
 
 	logger := logging.GetFromContext(ctx)
@@ -30,7 +38,9 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
 
 	isSupportedType := func(t string) bool {
-		return t == "Motionsspår" || t == "Skidspår" || t == "Långfärdsskridskoled" || t == "Cykelled"
+		type StringSet map[string]struct{}
+		_, isSupported := StringSet{BikeTrail: {}, ExerciseTrail: {}, IceSkatingTrail: {}, SkiLift: {}, SkiSlope: {}}[t]
+		return isSupported
 	}
 
 	for _, feature := range featureCollection.Features {
@@ -136,16 +146,25 @@ func parseExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.Exe
 
 	categories := []string{}
 
-	if feature.Properties.Type == "Långfärdsskridskoled" {
+	if feature.Properties.Type == IceSkatingTrail {
 		categories = append(categories, "ice-skating")
-	} else if feature.Properties.Type == "Cykelled" {
+	} else if feature.Properties.Type == BikeTrail {
 		categories = append(categories, "bike-track")
+	} else if feature.Properties.Type == SkiSlope {
+		categories = append(categories, "ski-slope")
+	} else if feature.Properties.Type == SkiLift {
+		categories = append(categories, "ski-lift")
 	}
 
 	for _, field := range fields {
 		if field.ID == 99 {
 			length, _ := strconv.ParseInt(string(field.Value[0:len(field.Value)]), 10, 64)
 			trail.Length = float64(length) / 1000.0
+		} else if field.ID == 100 {
+			elevation, _ := strconv.ParseInt(string(field.Value[0:len(field.Value)]), 10, 64)
+			//TODO: Support an elevation property on exercisetrail entities
+			//trail.Elevation = float64(elevation) / 1000.0
+			log.Warn().Msgf("ignored elevation %d on exercise trail %s", elevation, trail.Name)
 		} else if field.ID == 102 {
 			openStatus := map[string]string{"Ja": "open", "Nej": "closed"}
 			trail.Status = openStatus[string(field.Value[1:len(field.Value)-1])]
@@ -204,6 +223,11 @@ func parseExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.Exe
 			url := string(field.Value[1 : len(field.Value)-1])
 			url = strings.ReplaceAll(url, "\\/", "/")
 			trail.SeeAlso = []string{url}
+		} else if field.ID == 284 {
+			knownTypes := map[string]string{"Bygellift": "anchor-lift", "Knapplift": "button-lift"}
+			if liftType, ok := knownTypes[string(field.Value[1:len(field.Value)-1])]; ok {
+				categories = append(categories, liftType)
+			}
 		}
 	}
 
