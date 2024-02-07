@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 )
@@ -27,7 +27,7 @@ type clientImpl struct {
 	sourceURL string
 }
 
-func NewClient(apikey, sourceURL string, log zerolog.Logger) Client {
+func NewClient(ctx context.Context, apikey, sourceURL string) Client {
 	return &clientImpl{
 		apiKey:    apikey,
 		sourceURL: sourceURL,
@@ -54,26 +54,28 @@ func (c *clientImpl) Get(ctx context.Context) (*domain.FeatureCollection, error)
 
 	apiResponse, err := httpClient.Do(apiReq)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to retrieve facilities information")
+		log.Error("failed to retrieve facilities information", "err", err.Error())
 		return nil, err
 	}
 	defer apiResponse.Body.Close()
 
 	if apiResponse.StatusCode != http.StatusOK {
-		log.Error().Msgf("failed to retrieve facilities information, expected status code %d, but got %d", http.StatusOK, apiResponse.StatusCode)
-		return nil, fmt.Errorf("expected status code %d, but got %d", http.StatusOK, apiResponse.StatusCode)
+		log.Error("unexpected status code when attempting to retrieve facilities information", slog.Int("expected", http.StatusOK), slog.Int("received", apiResponse.StatusCode))
+		err = fmt.Errorf("expected status code %d, but got %d", http.StatusOK, apiResponse.StatusCode)
+		return nil, err
 	}
 
 	body, err := io.ReadAll(apiResponse.Body)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to read response body")
+		log.Error("failed to read response body", "err", err.Error())
 		return nil, err
 	}
 
 	featureCollection := &domain.FeatureCollection{}
 	err = json.Unmarshal(body, featureCollection)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response from %s. (%s)", c.sourceURL, err.Error())
+		err = fmt.Errorf("failed to unmarshal response from %s. (%s)", c.sourceURL, err.Error())
+		return nil, err
 	}
 
 	return featureCollection, nil

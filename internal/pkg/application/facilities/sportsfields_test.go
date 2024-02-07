@@ -10,7 +10,6 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
-	"github.com/rs/zerolog"
 )
 
 const sportsFieldResponse string = `{"type":"FeatureCollection","features":[
@@ -39,12 +38,13 @@ func TestSportsField(t *testing.T) {
 		return &ngsild.CreateEntityResult{}, nil
 	}
 
-	client := NewClient("apiKey", server.URL, zerolog.Logger{})
+	ctx := context.Background()
 
-	featureCollection, err := client.Get(context.Background())
+	client := NewClient(ctx, "apiKey", server.URL)
+
+	featureCollection, err := client.Get(ctx)
 	is.NoErr(err)
 
-	ctx := context.Background()
 	storage := NewStorage(ctx)
 	err = storage.StoreSportsFieldsFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
 	is.NoErr(err)
@@ -61,18 +61,18 @@ func TestSportsField(t *testing.T) {
 
 func TestSportsFieldHasManagedByAndOwnerProperties(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, sportsFieldResponse)
+	ctx := context.Background()
 
 	// Replace default failing CreateEntityFunc with a noop, so we can fetch the entity argument in the assert phase
 	ctxBrokerMock.CreateEntityFunc = func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 		return &ngsild.CreateEntityResult{}, nil
 	}
 
-	client := NewClient("apiKey", server.URL, zerolog.Logger{})
+	client := NewClient(ctx, "apiKey", server.URL)
 
-	featureCollection, err := client.Get(context.Background())
+	featureCollection, err := client.Get(ctx)
 	is.NoErr(err)
 
-	ctx := context.Background()
 	storage := NewStorage(ctx)
 	err = storage.StoreSportsFieldsFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
 	is.NoErr(err)

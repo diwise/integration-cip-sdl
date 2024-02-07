@@ -13,7 +13,6 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	test "github.com/diwise/context-broker/pkg/test"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestThatMergeIsAttemptedBeforeCreate(t *testing.T) {
@@ -90,7 +89,7 @@ func testSetup(t *testing.T, statusCode int, body string) (*is.I, CityWorkSvc, *
 		},
 	}
 
-	cw := NewCityWorkService(zerolog.Logger{}, &sdlc, 1, ctxBroker)
+	cw := NewCityWorkService(context.Background(), &sdlc, 1, ctxBroker)
 
 	return is, cw, ctxBroker
 }

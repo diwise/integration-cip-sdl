@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
-	"github.com/rs/zerolog"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
 type CityWorkSvc interface {
@@ -21,9 +22,9 @@ type CityWorkSvc interface {
 	getAndPublishCityWork(ctx context.Context) error
 }
 
-func NewCityWorkService(log zerolog.Logger, s SdlClient, timeInterval int, c client.ContextBrokerClient) CityWorkSvc {
+func NewCityWorkService(ctx context.Context, s SdlClient, timeInterval int, c client.ContextBrokerClient) CityWorkSvc {
 	return &cw{
-		log:           log,
+		log:           logging.GetFromContext(ctx),
 		sdlClient:     s,
 		timeInterval:  timeInterval,
 		contextbroker: c,
@@ -31,7 +32,7 @@ func NewCityWorkService(log zerolog.Logger, s SdlClient, timeInterval int, c cli
 }
 
 type cw struct {
-	log           zerolog.Logger
+	log           *slog.Logger
 	sdlClient     SdlClient
 	timeInterval  int
 	contextbroker client.ContextBrokerClient
@@ -46,7 +47,8 @@ func (cw *cw) Start(ctx context.Context) error {
 
 		if err != nil {
 			const retryIntervalMinutes int = 2
-			cw.log.Error().Err(err).Msgf("failed to get city work, attempting again in %d minutes", retryIntervalMinutes)
+			log := logging.GetFromContext(ctx)
+			log.Error("failed to get city work", slog.Int("retry", retryIntervalMinutes*60), "err", err.Error())
 			sleepDuration = time.Duration(retryIntervalMinutes) * time.Minute
 		}
 
@@ -56,8 +58,9 @@ func (cw *cw) Start(ctx context.Context) error {
 
 func (cw *cw) getAndPublishCityWork(ctx context.Context) error {
 	response, err := cw.sdlClient.Get(ctx)
+	logger := logging.GetFromContext(ctx)
 	if err != nil {
-		cw.log.Error().Err(err).Msg("failed to get city work")
+		logger.Error("failed to get city work", "err", err.Error())
 		return fmt.Errorf("failed to get city work")
 	}
 
@@ -78,18 +81,18 @@ func (cw *cw) getAndPublishCityWork(ctx context.Context) error {
 		_, err = cw.contextbroker.MergeEntity(ctx, entityID, fragment, headers)
 		if err != nil {
 			if !errors.Is(err, ngsierrors.ErrNotFound) {
-				cw.log.Error().Err(err).Msg("failed to merge entity")
+				logger.Error("failed to merge entity", "entityID", entityID, "err", err.Error())
 				continue
 			}
 			entity, err := entities.New(entityID, fiware.CityWorkTypeName, attributes...)
 			if err != nil {
-				cw.log.Error().Err(err).Msg("entities.New failed")
+				logger.Error("entities.New failed", "entityID", entityID, "err", err.Error())
 				continue
 			}
 
 			_, err = cw.contextbroker.CreateEntity(ctx, entity, headers)
 			if err != nil {
-				cw.log.Error().Err(err).Msg("failed to post city work to context broker")
+				logger.Error("failed to post city work to context broker", "entityID", entityID, "err", err.Error())
 				continue
 			}
 		}

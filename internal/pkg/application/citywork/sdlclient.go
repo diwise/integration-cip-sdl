@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 )
@@ -25,7 +25,7 @@ type sdlClient struct {
 	sundsvallvaxerURL string
 }
 
-func NewSdlClient(sundsvallvaxerURL string, log zerolog.Logger) SdlClient {
+func NewSdlClient(ctx context.Context, sundsvallvaxerURL string) SdlClient {
 	return &sdlClient{
 		sundsvallvaxerURL: sundsvallvaxerURL,
 	}
@@ -54,20 +54,20 @@ func (c *sdlClient) Get(ctx context.Context) (*sdlResponse, error) {
 
 	apiResponse, err := httpClient.Do(apiReq)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to retrieve traffic information")
+		log.Error("failed to retrieve traffic information", "err", err.Error())
 		return nil, err
 	}
 
 	defer apiResponse.Body.Close()
 
 	if apiResponse.StatusCode != http.StatusOK {
-		log.Error().Msgf("failed to retrieve traffic information, expected status code %d, but got %d", http.StatusOK, apiResponse.StatusCode)
+		log.Error("unexpected response code when retrieving traffic information", slog.Int("expected", http.StatusOK), slog.Int("received", apiResponse.StatusCode))
 		return nil, fmt.Errorf("expected status code %d, but got %d", http.StatusOK, apiResponse.StatusCode)
 	}
 
 	body, err := io.ReadAll(apiResponse.Body)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to read response body")
+		log.Error("failed to read response body", "err", err.Error())
 		return nil, err
 	}
 
@@ -76,7 +76,7 @@ func (c *sdlClient) Get(ctx context.Context) (*sdlResponse, error) {
 		strBody = strBody[:100]
 	}
 
-	log.Debug().Msgf("received response: %s...", strBody)
+	log.Debug("received response", "body", strBody)
 
 	var m sdlResponse
 	err = json.Unmarshal(body, &m)

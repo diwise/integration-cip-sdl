@@ -10,7 +10,6 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
-	"github.com/rs/zerolog"
 )
 
 const sportsVenueResponse string = `{"type":"FeatureCollection","features":[
@@ -33,7 +32,7 @@ func TestSportsVenueLoad(t *testing.T) {
 
 	ctx := context.Background()
 	storage := NewStorage(ctx)
-	err := storage.StoreSportsVenuesFromSource(context.Background(), ctxBrokerMock, server.URL, fc)
+	err := storage.StoreSportsVenuesFromSource(ctx, ctxBrokerMock, server.URL, fc)
 
 	is.NoErr(err)
 	is.Equal(len(ctxBrokerMock.MergeEntityCalls()), 1)
@@ -41,20 +40,20 @@ func TestSportsVenueLoad(t *testing.T) {
 
 func TestSportsVenue(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, sportsVenueResponse)
+	ctx := context.Background()
 
 	// Replace default failing CreateEntityFunc with a noop, so we can fetch the entity argument in the assert phase
 	ctxBrokerMock.CreateEntityFunc = func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 		return &ngsild.CreateEntityResult{}, nil
 	}
 
-	client := NewClient("apiKey", server.URL, zerolog.Logger{})
+	client := NewClient(ctx, "apiKey", server.URL)
 
-	featureCollection, err := client.Get(context.Background())
+	featureCollection, err := client.Get(ctx)
 	is.NoErr(err)
 
-	ctx := context.Background()
 	storage := NewStorage(ctx)
-	err = storage.StoreSportsVenuesFromSource(context.Background(), ctxBrokerMock, server.URL, *featureCollection)
+	err = storage.StoreSportsVenuesFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
 	is.NoErr(err)
 
 	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
@@ -67,15 +66,15 @@ func TestSportsVenue(t *testing.T) {
 
 func TestSportsVenueContainsManagedByAndOwnerProperties(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, sportsVenueResponse)
+	ctx := context.Background()
 
 	// Replace default failing CreateEntityFunc with a noop, so we can fetch the entity argument in the assert phase
 	ctxBrokerMock.CreateEntityFunc = func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 		return &ngsild.CreateEntityResult{}, nil
 	}
 
-	client := NewClient("apiKey", server.URL, zerolog.Logger{})
+	client := NewClient(ctx, "apiKey", server.URL)
 
-	ctx := context.Background()
 	featureCollection, err := client.Get(ctx)
 	is.NoErr(err)
 

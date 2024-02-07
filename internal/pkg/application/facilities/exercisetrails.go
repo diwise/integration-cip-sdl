@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/rs/zerolog"
 
 	"github.com/diwise/context-broker/pkg/datamodels/diwise"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
@@ -34,6 +33,7 @@ const (
 func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient client.ContextBrokerClient, sourceURL string, featureCollection domain.FeatureCollection) error {
 
 	logger := logging.GetFromContext(ctx)
+	logger.Info("creating or updating exercise trails in broker...")
 
 	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
 
@@ -45,9 +45,9 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 
 	for _, feature := range featureCollection.Features {
 		if isSupportedType(feature.Properties.Type) {
-			exerciseTrail, err := parseExerciseTrail(logger, feature)
+			exerciseTrail, err := parseExerciseTrail(ctx, feature)
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to parse motionsspår")
+				logger.Error("failed to parse exercise trail", "err", err.Error())
 				continue
 			}
 
@@ -57,7 +57,7 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {
-						logger.Info().Msgf("could not delete entity %s", entityID)
+						logger.Info("could not delete entity", slog.String("entityID", entityID))
 					}
 				}
 				continue
@@ -76,29 +76,35 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 
 			if err != nil {
 				if !errors.Is(err, ngsierrors.ErrNotFound) {
-					logger.Error().Err(err).Msg("failed to merge entity")
+					logger.Error("failed to merge entity", "entityID", entityID, "err", err.Error())
 					continue
 				}
 				entity, err := entities.New(entityID, diwise.ExerciseTrailTypeName, attributes...)
 				if err != nil {
-					logger.Error().Err(err).Msg("entities.New failed")
+					logger.Error("entities.New failed", "entityID", entityID, "err", err.Error())
 					continue
 				}
 
-				_, err = ctxBrokerClient.CreateEntity(ctx, entity, headers)
+				deadline, cancelDeadline := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
+				_, err = ctxBrokerClient.CreateEntity(deadline, entity, headers)
+				cancelDeadline()
+
 				if err != nil {
-					logger.Error().Err(err).Msg("failed to post exercise trail to context broker")
+					logger.Error("failed to post exercise trail to context broker", "entityID", entityID, "err", err.Error())
 					continue
 				}
 			}
 		}
 	}
 
+	logger.Info("done processing exercise trails")
+
 	return nil
 }
 
-func parseExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.ExerciseTrail, error) {
-	log.Info().Msgf("found published exercise trail %d %s", feature.ID, feature.Properties.Name)
+func parseExerciseTrail(ctx context.Context, feature domain.Feature) (*domain.ExerciseTrail, error) {
+	log := logging.GetFromContext(ctx)
+	log.Info("found published exercise trail", slog.Int64("featureID", feature.ID), slog.String("name", feature.Properties.Name))
 
 	trail := &domain.ExerciseTrail{
 		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
@@ -164,7 +170,7 @@ func parseExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.Exe
 			elevation, _ := strconv.ParseInt(string(field.Value[0:len(field.Value)]), 10, 64)
 			//TODO: Support an elevation property on exercisetrail entities
 			//trail.Elevation = float64(elevation) / 1000.0
-			log.Warn().Msgf("ignored elevation %d on exercise trail %s", elevation, trail.Name)
+			log.Warn("ignored elevation on exercise trail", slog.String("name", trail.Name), slog.Int64("elevation", elevation))
 		} else if field.ID == 102 {
 			openStatus := map[string]string{"Ja": "open", "Nej": "closed"}
 			trail.Status = openStatus[string(field.Value[1:len(field.Value)-1])]
