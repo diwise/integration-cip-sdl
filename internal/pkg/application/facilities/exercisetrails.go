@@ -47,7 +47,7 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 		if isSupportedType(feature.Properties.Type) {
 			exerciseTrail, err := parseExerciseTrail(ctx, feature)
 			if err != nil {
-				logger.Error("failed to parse exercise trail", "err", err.Error())
+				logger.Error("failed to parse exercise trail", slog.Int64("featureID", feature.ID), "err", err.Error())
 				continue
 			}
 

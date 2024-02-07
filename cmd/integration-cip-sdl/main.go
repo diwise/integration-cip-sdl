@@ -73,12 +73,7 @@ func featureIsEnabled(ctx context.Context, feature string) bool {
 	isEnabled := os.Getenv(featureKey) == "true"
 
 	logger := logging.GetFromContext(ctx)
-
-	if isEnabled {
-		logger.Info(fmt.Sprintf("feature %s is enabled", feature))
-	} else {
-		logger.Warn(fmt.Sprintf("feature %s is enabled", feature))
-	}
+	logger.Info("checking if feature is enabled", "feature", feature, "enabled", isEnabled)
 
 	return isEnabled
 }

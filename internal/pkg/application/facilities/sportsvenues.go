@@ -37,7 +37,7 @@ func (s *storageImpl) StoreSportsVenuesFromSource(ctx context.Context, ctxBroker
 			sportsVenue, err := parseSportsVenue(ctx, feature)
 			if err != nil {
 				if !errors.Is(err, ErrSportsVenueIsOfIgnoredType) {
-					logger.Error("failed to parse feature", "err", err.Error())
+					logger.Error("failed to parse sports venue", slog.Int64("featureID", feature.ID), "err", err.Error())
 				}
 				continue
 			}

@@ -27,7 +27,7 @@ func (s *storageImpl) StoreBeachesFromSource(ctx context.Context, ctxBrokerClien
 		if feature.Properties.Type == "Strandbad" {
 			beach, err := parseBeach(ctx, feature)
 			if err != nil {
-				logger.Error("failed to parse strandbad", "err", err.Error())
+				logger.Error("failed to parse beach", slog.Int64("featureID", feature.ID), "err", err.Error())
 				continue
 			}
 
