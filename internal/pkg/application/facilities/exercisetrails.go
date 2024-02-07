@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/rs/zerolog"
 
 	"github.com/diwise/context-broker/pkg/datamodels/diwise"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
@@ -23,21 +22,32 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
+const (
+	BikeTrail       string = "Cykelled"
+	ExerciseTrail   string = "Motionsspår"
+	IceSkatingTrail string = "Långfärdsskridskoled"
+	SkiLift         string = "Skidlift"
+	SkiSlope        string = "Skidpist"
+)
+
 func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient client.ContextBrokerClient, sourceURL string, featureCollection domain.FeatureCollection) error {
 
 	logger := logging.GetFromContext(ctx)
+	logger.Info("creating or updating exercise trails in broker...")
 
 	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
 
-	isSupportedType := func(t string) bool {
-		return t == "Motionsspår" || t == "Skidspår" || t == "Långfärdsskridskoled" || t == "Cykelled"
+	isSupportedType := func(theType string) bool {
+		type StringSet map[string]struct{}
+		_, theTypeIsInSet := StringSet{BikeTrail: {}, ExerciseTrail: {}, IceSkatingTrail: {}, SkiLift: {}, SkiSlope: {}}[theType]
+		return theTypeIsInSet
 	}
 
 	for _, feature := range featureCollection.Features {
 		if isSupportedType(feature.Properties.Type) {
-			exerciseTrail, err := parseExerciseTrail(logger, feature)
+			exerciseTrail, err := parseExerciseTrail(ctx, feature)
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to parse motionsspår")
+				logger.Error("failed to parse exercise trail", slog.Int64("featureID", feature.ID), "err", err.Error())
 				continue
 			}
 
@@ -47,7 +57,7 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {
-						logger.Info().Msgf("could not delete entity %s", entityID)
+						logger.Info("could not delete entity", slog.String("entityID", entityID))
 					}
 				}
 				continue
@@ -66,29 +76,35 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 
 			if err != nil {
 				if !errors.Is(err, ngsierrors.ErrNotFound) {
-					logger.Error().Err(err).Msg("failed to merge entity")
+					logger.Error("failed to merge entity", "entityID", entityID, "err", err.Error())
 					continue
 				}
 				entity, err := entities.New(entityID, diwise.ExerciseTrailTypeName, attributes...)
 				if err != nil {
-					logger.Error().Err(err).Msg("entities.New failed")
+					logger.Error("entities.New failed", "entityID", entityID, "err", err.Error())
 					continue
 				}
 
-				_, err = ctxBrokerClient.CreateEntity(ctx, entity, headers)
+				deadline, cancelDeadline := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
+				_, err = ctxBrokerClient.CreateEntity(deadline, entity, headers)
+				cancelDeadline()
+
 				if err != nil {
-					logger.Error().Err(err).Msg("failed to post exercise trail to context broker")
+					logger.Error("failed to post exercise trail to context broker", "entityID", entityID, "err", err.Error())
 					continue
 				}
 			}
 		}
 	}
 
+	logger.Info("done processing exercise trails")
+
 	return nil
 }
 
-func parseExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.ExerciseTrail, error) {
-	log.Info().Msgf("found published exercise trail %d %s", feature.ID, feature.Properties.Name)
+func parseExerciseTrail(ctx context.Context, feature domain.Feature) (*domain.ExerciseTrail, error) {
+	log := logging.GetFromContext(ctx)
+	log.Info("found published exercise trail", slog.Int64("featureID", feature.ID), slog.String("name", feature.Properties.Name))
 
 	trail := &domain.ExerciseTrail{
 		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
@@ -136,16 +152,25 @@ func parseExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.Exe
 
 	categories := []string{}
 
-	if feature.Properties.Type == "Långfärdsskridskoled" {
+	if feature.Properties.Type == IceSkatingTrail {
 		categories = append(categories, "ice-skating")
-	} else if feature.Properties.Type == "Cykelled" {
+	} else if feature.Properties.Type == BikeTrail {
 		categories = append(categories, "bike-track")
+	} else if feature.Properties.Type == SkiSlope {
+		categories = append(categories, "ski-slope")
+	} else if feature.Properties.Type == SkiLift {
+		categories = append(categories, "ski-lift")
 	}
 
 	for _, field := range fields {
 		if field.ID == 99 {
 			length, _ := strconv.ParseInt(string(field.Value[0:len(field.Value)]), 10, 64)
 			trail.Length = float64(length) / 1000.0
+		} else if field.ID == 100 {
+			elevation, _ := strconv.ParseInt(string(field.Value[0:len(field.Value)]), 10, 64)
+			//TODO: Support an elevation property on exercisetrail entities
+			//trail.Elevation = float64(elevation) / 1000.0
+			log.Warn("ignored elevation on exercise trail", slog.String("name", trail.Name), slog.Int64("elevation", elevation))
 		} else if field.ID == 102 {
 			openStatus := map[string]string{"Ja": "open", "Nej": "closed"}
 			trail.Status = openStatus[string(field.Value[1:len(field.Value)-1])]
@@ -204,6 +229,11 @@ func parseExerciseTrail(log zerolog.Logger, feature domain.Feature) (*domain.Exe
 			url := string(field.Value[1 : len(field.Value)-1])
 			url = strings.ReplaceAll(url, "\\/", "/")
 			trail.SeeAlso = []string{url}
+		} else if field.ID == 284 {
+			knownTypes := map[string]string{"Bygellift": "anchor-lift", "Knapplift": "button-lift"}
+			if liftType, ok := knownTypes[string(field.Value[1:len(field.Value)-1])]; ok {
+				categories = append(categories, liftType)
+			}
 		}
 	}
 

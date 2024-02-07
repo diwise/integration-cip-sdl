@@ -17,7 +17,6 @@ import (
 	test "github.com/diwise/context-broker/pkg/test"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestMain(m *testing.M) {
@@ -26,36 +25,40 @@ func TestMain(m *testing.M) {
 
 func TestTrailDataLoad(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, response)
-
-	fc := domain.FeatureCollection{}
-	json.Unmarshal([]byte(response), &fc)
-
 	ctx := context.Background()
-	storage := NewStorage(ctx)
-	err := storage.StoreTrailsFromSource(ctx, ctxBrokerMock, server.URL, fc)
-
-	is.NoErr(err)
-	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 2)
-}
-
-func TestExerciseTrail(t *testing.T) {
-	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, response)
 
 	ctxBrokerMock.CreateEntityFunc = func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 		return &ngsild.CreateEntityResult{}, nil
 	}
 
-	client := NewClient("apiKey", server.URL, zerolog.Logger{})
+	fc := domain.FeatureCollection{}
+	json.Unmarshal([]byte(response), &fc)
 
-	featureCollection, err := client.Get(context.Background())
+	storage := NewStorage(ctx)
+	err := storage.StoreTrailsFromSource(ctx, ctxBrokerMock, server.URL, fc)
+
+	is.NoErr(err)
+	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
+}
+
+func TestExerciseTrail(t *testing.T) {
+	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, response)
+	ctx := context.Background()
+
+	ctxBrokerMock.CreateEntityFunc = func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
+		return &ngsild.CreateEntityResult{}, nil
+	}
+
+	client := NewClient(ctx, "apiKey", server.URL)
+
+	featureCollection, err := client.Get(ctx)
 	is.NoErr(err)
 
-	ctx := context.Background()
 	storage := NewStorage(ctx)
 	err = storage.StoreTrailsFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
 	is.NoErr(err)
 
-	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 2)
+	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
 	e := ctxBrokerMock.CreateEntityCalls()[0].Entity
 	entityJSON, _ := json.Marshal(e)
 
@@ -70,22 +73,22 @@ func TestExerciseTrail(t *testing.T) {
 
 func TestExerciseTrailContainsManagedByAndOwnerProperties(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, response)
+	ctx := context.Background()
 
 	ctxBrokerMock.CreateEntityFunc = func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 		return &ngsild.CreateEntityResult{}, nil
 	}
 
-	client := NewClient("apiKey", server.URL, zerolog.Logger{})
+	client := NewClient(ctx, "apiKey", server.URL)
 
-	featureCollection, err := client.Get(context.Background())
+	featureCollection, err := client.Get(ctx)
 	is.NoErr(err)
 
-	ctx := context.Background()
 	storage := NewStorage(ctx)
 	err = storage.StoreTrailsFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
 	is.NoErr(err)
 
-	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 2)
+	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
 	e := ctxBrokerMock.CreateEntityCalls()[0].Entity
 	entityJSON, _ := json.Marshal(e)
 
@@ -97,20 +100,20 @@ func TestExerciseTrailContainsManagedByAndOwnerProperties(t *testing.T) {
 
 func TestDeletedExerciseTrail(t *testing.T) {
 	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, response)
+	ctx := context.Background()
 
 	ctxBrokerMock.DeleteEntityFunc = func(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error) {
 		return &ngsild.DeleteEntityResult{}, nil
 	}
 
-	client := NewClient("apiKey", server.URL, zerolog.Logger{})
+	client := NewClient(ctx, "apiKey", server.URL)
 
-	featureCollection, err := client.Get(context.Background())
+	featureCollection, err := client.Get(ctx)
 	is.NoErr(err)
 
 	var deletedDate = "2022-01-01 00:00:01"
 	featureCollection.Features[1].Properties.Deleted = &deletedDate
 
-	ctx := context.Background()
 	storage := NewStorage(ctx)
 	err = storage.StoreTrailsFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
 

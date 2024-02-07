@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
-
-	"github.com/rs/zerolog"
 
 	"github.com/diwise/context-broker/pkg/datamodels/diwise"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
@@ -35,10 +34,10 @@ func (s *storageImpl) StoreSportsVenuesFromSource(ctx context.Context, ctxBroker
 
 	for _, feature := range featureCollection.Features {
 		if isSupportedType(feature.Properties.Type) {
-			sportsVenue, err := parseSportsVenue(logger, feature)
+			sportsVenue, err := parseSportsVenue(ctx, feature)
 			if err != nil {
 				if !errors.Is(err, ErrSportsVenueIsOfIgnoredType) {
-					logger.Error().Err(err).Msg("failed to parse feature")
+					logger.Error("failed to parse sports venue", slog.Int64("featureID", feature.ID), "err", err.Error())
 				}
 				continue
 			}
@@ -49,7 +48,7 @@ func (s *storageImpl) StoreSportsVenuesFromSource(ctx context.Context, ctxBroker
 				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {
-						logger.Info().Msgf("could not delete entity %s", entityID)
+						logger.Info("could not delete entity", "entityID", entityID, "err", err.Error())
 					}
 				}
 				continue
@@ -68,18 +67,18 @@ func (s *storageImpl) StoreSportsVenuesFromSource(ctx context.Context, ctxBroker
 
 			if err != nil {
 				if !errors.Is(err, ngsierrors.ErrNotFound) {
-					logger.Error().Err(err).Msg("failed to merge entity")
+					logger.Error("failed to merge entity", "entityID", entityID, "err", err.Error())
 					continue
 				}
 				entity, err := entities.New(entityID, diwise.SportsVenueTypeName, attributes...)
 				if err != nil {
-					logger.Error().Err(err).Msg("entities.New failed")
+					logger.Error("entities.New failed", "entityID", entityID, "err", err.Error())
 					continue
 				}
 
 				_, err = ctxBrokerClient.CreateEntity(ctx, entity, headers)
 				if err != nil {
-					logger.Error().Err(err).Msg("failed to post sports venue to context broker")
+					logger.Error("failed to post sports venue to context broker", "entityID", entityID, "err", err.Error())
 					continue
 				}
 			}
@@ -89,8 +88,9 @@ func (s *storageImpl) StoreSportsVenuesFromSource(ctx context.Context, ctxBroker
 	return nil
 }
 
-func parseSportsVenue(log zerolog.Logger, feature domain.Feature) (*domain.SportsVenue, error) {
-	log.Info().Msgf("found published sports venue %d %s", feature.ID, feature.Properties.Name)
+func parseSportsVenue(ctx context.Context, feature domain.Feature) (*domain.SportsVenue, error) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info("found published sports venue", slog.Int64("featureID", feature.ID), "name", feature.Properties.Name)
 
 	sportsVenue := &domain.SportsVenue{
 		ID:          fmt.Sprintf("%s%d", domain.SundsvallAnlaggningPrefix, feature.ID),
