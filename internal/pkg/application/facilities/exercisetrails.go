@@ -23,12 +23,11 @@ import (
 )
 
 const (
-	BikeTrail         string = "Cykelled"
-	ExerciseTrail     string = "Motionsspår"
-	IceSkatingTrail   string = "Långfärdsskridskoled"
-	SkiLift           string = "Skidlift"
-	SkiSlope          string = "Skidpist"
-	SkiSlopeInSwedish string = "Skidbacke"
+	BikeTrail       string = "Cykelled"
+	ExerciseTrail   string = "Motionsspår"
+	IceSkatingTrail string = "Långfärdsskridskoled"
+	SkiLift         string = "Skidlift"
+	SkiSlope        string = "Skidpist"
 )
 
 func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient client.ContextBrokerClient, sourceURL string, featureCollection domain.FeatureCollection) error {
@@ -40,7 +39,7 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 
 	isSupportedType := func(theType string) bool {
 		type StringSet map[string]struct{}
-		_, theTypeIsInSet := StringSet{BikeTrail: {}, ExerciseTrail: {}, IceSkatingTrail: {}, SkiLift: {}, SkiSlope: {}, SkiSlopeInSwedish: {}}[theType]
+		_, theTypeIsInSet := StringSet{BikeTrail: {}, ExerciseTrail: {}, IceSkatingTrail: {}, SkiLift: {}, SkiSlope: {}}[theType]
 		return theTypeIsInSet
 	}
 
@@ -159,16 +158,14 @@ func parseExerciseTrail(ctx context.Context, feature domain.Feature) (*domain.Ex
 		categories = append(categories, "ice-skating")
 	} else if feature.Properties.Type == BikeTrail {
 		categories = append(categories, "bike-track")
-	} else if feature.Properties.Type == SkiSlope || feature.Properties.Type == SkiSlopeInSwedish {
+	} else if feature.Properties.Type == SkiSlope {
 		categories = append(categories, "ski-slope")
 	} else if feature.Properties.Type == SkiLift {
 		categories = append(categories, "ski-lift")
 	}
 
 	for _, field := range fields {
-		if field.ID == 1 {
-			trail.Description = string(field.Value[1 : len(field.Value)-1])
-		} else if field.ID == 99 {
+		if field.ID == 99 {
 			length, _ := strconv.ParseInt(string(field.Value[0:len(field.Value)]), 10, 64)
 			trail.Length = float64(length) / 1000.0
 		} else if field.ID == 100 {
