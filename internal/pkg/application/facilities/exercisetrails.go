@@ -159,7 +159,7 @@ func parseExerciseTrail(ctx context.Context, feature domain.Feature) (*domain.Ex
 		categories = append(categories, "ice-skating")
 	} else if feature.Properties.Type == BikeTrail {
 		categories = append(categories, "bike-track")
-	} else if feature.Properties.Type == SkiSlope {
+	} else if feature.Properties.Type == SkiSlope || feature.Properties.Type == SkiSlopeInSwedish {
 		categories = append(categories, "ski-slope")
 	} else if feature.Properties.Type == SkiLift {
 		categories = append(categories, "ski-lift")
