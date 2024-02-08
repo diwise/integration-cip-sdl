@@ -11,27 +11,28 @@ import (
 
 func TestShouldBeDeleted(t *testing.T) {
 	is := is.New(t)
+	ctx := context.Background()
 
 	var d string = "2022-01-01 00:00:00"
 	props := domain.FeatureProps{
 		Deleted: &d,
 	}
 
-	storage := NewStorage(context.Background())
+	storage := NewStorage(ctx)
 	impl := storage.(*storageImpl)
 
 	f := domain.Feature{ID: 1, Properties: props}
 
 	impl.deleted[1] = time.Now().UTC()
 
-	ok, alreadyDeleted := impl.shouldBeDeleted(f)
+	ok, alreadyDeleted := impl.shouldBeDeleted(ctx, f)
 
 	is.True(ok)
 	is.True(alreadyDeleted)
 
 	impl.deleted[1] = time.Now().UTC().Add(-1 * 25 * time.Hour)
 
-	ok, alreadyDeleted = impl.shouldBeDeleted(f)
+	ok, alreadyDeleted = impl.shouldBeDeleted(ctx, f)
 
 	is.True(ok)
 	is.True(!alreadyDeleted)
