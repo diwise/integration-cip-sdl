@@ -165,7 +165,9 @@ func parseExerciseTrail(ctx context.Context, feature domain.Feature) (*domain.Ex
 	}
 
 	for _, field := range fields {
-		if field.ID == 99 {
+		if field.ID == 1 {
+			trail.Description = string(field.Value[1 : len(field.Value)-1])
+		} else if field.ID == 99 {
 			length, _ := strconv.ParseInt(string(field.Value[0:len(field.Value)]), 10, 64)
 			trail.Length = float64(length) / 1000.0
 		} else if field.ID == 100 {
