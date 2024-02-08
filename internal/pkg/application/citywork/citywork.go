@@ -82,6 +82,8 @@ func (cw *cw) getAndPublishCityWork(ctx context.Context) error {
 		if err != nil {
 			if !errors.Is(err, ngsierrors.ErrNotFound) {
 				logger.Error("failed to merge entity", "entityID", entityID, "err", err.Error())
+				logger.Info("waiting for context broker to recover...")
+				time.Sleep(10 * time.Second)
 				continue
 			}
 			entity, err := entities.New(entityID, fiware.CityWorkTypeName, attributes...)
