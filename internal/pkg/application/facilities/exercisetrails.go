@@ -57,7 +57,7 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {
-						logger.Info("could not delete entity", slog.String("entityID", entityID))
+						logger.Info("could not delete entity", "entityID", entityID, "err", err.Error())
 					}
 				}
 				continue

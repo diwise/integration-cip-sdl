@@ -43,7 +43,7 @@ func (s *storageImpl) StoreSportsFieldsFromSource(ctx context.Context, ctxBroker
 				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {
-						logger.Info("could not delete entity", "entityID", entityID)
+						logger.Info("could not delete entity", "entityID", entityID, "err", err.Error())
 					}
 				}
 				continue
