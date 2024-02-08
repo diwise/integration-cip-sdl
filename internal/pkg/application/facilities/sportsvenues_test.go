@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
@@ -98,8 +99,8 @@ func TestDeletedSportsVenue(t *testing.T) {
 	fc := domain.FeatureCollection{}
 	json.Unmarshal([]byte(sportsVenueResponse), &fc)
 
-	var deletedDate = "2022-01-01 00:00:01"
-	fc.Features[0].Properties.Deleted = &deletedDate
+	var aWeekAgo = time.Now().UTC().Add(-1 * 7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
+	fc.Features[0].Properties.Deleted = &aWeekAgo
 
 	ctx := context.Background()
 	storage := NewStorage(ctx)

@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/diwise/context-broker/pkg/ngsild"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
@@ -111,8 +112,8 @@ func TestDeletedExerciseTrail(t *testing.T) {
 	featureCollection, err := client.Get(ctx)
 	is.NoErr(err)
 
-	var deletedDate = "2022-01-01 00:00:01"
-	featureCollection.Features[1].Properties.Deleted = &deletedDate
+	var aWeekAgo = time.Now().UTC().Add(-1 * 7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
+	featureCollection.Features[1].Properties.Deleted = &aWeekAgo
 
 	storage := NewStorage(ctx)
 	err = storage.StoreTrailsFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
