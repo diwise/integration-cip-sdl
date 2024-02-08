@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
@@ -94,8 +95,8 @@ func TestDeletedSportsField(t *testing.T) {
 	json.Unmarshal([]byte(sportsFieldResponse), &fc)
 
 	fc.Features[0].ID = 789 // id needs to be unique for each test
-	var deletedDate = "2022-01-01 00:00:01"
-	fc.Features[0].Properties.Deleted = &deletedDate
+	var aWeekAgo = time.Now().UTC().Add(-1 * 7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
+	fc.Features[0].Properties.Deleted = &aWeekAgo
 
 	ctx := context.Background()
 	storage := NewStorage(ctx)
@@ -114,6 +115,9 @@ func TestUnpublishedSportsField(t *testing.T) {
 	fc.Features[0].ID = 456 // id needs to be unique for each test
 	fc.Features[0].Properties.Published = false
 
+	var aWeekAgo = time.Now().UTC().Add(-1 * 7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
+	fc.Features[0].Properties.Updated = &aWeekAgo
+
 	ctx := context.Background()
 	storage := NewStorage(ctx)
 	err := storage.StoreSportsFieldsFromSource(ctx, ctxBrokerMock, server.URL, fc)
@@ -129,8 +133,8 @@ func TestDeletedSportsFieldOnlyOnce(t *testing.T) {
 	json.Unmarshal([]byte(sportsFieldResponse), &fc)
 
 	fc.Features[0].ID = 123 // id needs to be unique for each test
-	var deletedDate = "2022-01-01 00:00:01"
-	fc.Features[0].Properties.Deleted = &deletedDate
+	var aWeekAgo = time.Now().UTC().Add(-1 * 7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
+	fc.Features[0].Properties.Deleted = &aWeekAgo
 
 	ctx := context.Background()
 	storage := NewStorage(ctx)

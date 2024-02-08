@@ -13,9 +13,9 @@ func TestShouldBeDeleted(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	var d string = "2022-01-01 00:00:00"
+	var aWeekAgo = time.Now().UTC().Add(-1 * 7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
 	props := domain.FeatureProps{
-		Deleted: &d,
+		Deleted: &aWeekAgo,
 	}
 
 	storage := NewStorage(ctx)
@@ -23,17 +23,15 @@ func TestShouldBeDeleted(t *testing.T) {
 
 	f := domain.Feature{ID: 1, Properties: props}
 
-	impl.deleted[1] = time.Now().UTC()
-
 	ok, alreadyDeleted := impl.shouldBeDeleted(ctx, f)
 
 	is.True(ok)
-	is.True(alreadyDeleted)
+	is.True(!alreadyDeleted)
 
-	impl.deleted[1] = time.Now().UTC().Add(-1 * 25 * time.Hour)
+	impl.deleted[1] = time.Now().UTC()
 
 	ok, alreadyDeleted = impl.shouldBeDeleted(ctx, f)
 
 	is.True(ok)
-	is.True(!alreadyDeleted)
+	is.True(alreadyDeleted)
 }
