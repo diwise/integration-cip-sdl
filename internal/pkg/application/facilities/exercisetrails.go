@@ -53,7 +53,7 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 
 			entityID := diwise.ExerciseTrailIDPrefix + exerciseTrail.ID
 
-			if okToDel, alreadyDeleted := s.shouldBeDeleted(feature); okToDel {
+			if okToDel, alreadyDeleted := s.shouldBeDeleted(ctx, feature); okToDel {
 				if !alreadyDeleted {
 					_, err := ctxBrokerClient.DeleteEntity(ctx, entityID)
 					if err != nil {
@@ -72,7 +72,7 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 			_, err = ctxBrokerClient.MergeEntity(ctx, entityID, fragment, headers)
 
 			// Throttle so we dont kill the broker
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 
 			if err != nil {
 				if !errors.Is(err, ngsierrors.ErrNotFound) {
