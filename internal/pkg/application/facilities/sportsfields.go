@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"time"
 
 	"github.com/diwise/context-broker/pkg/datamodels/diwise"
@@ -134,16 +135,24 @@ func parseSportsField(ctx context.Context, feature domain.Feature) (*domain.Spor
 	}
 
 	categories := []string{}
+	seeAlso := []string{}
+
 	var ignoreThisField bool = true
 	var isIceRink bool = false
 
 	for _, field := range fields {
-		if field.ID == 279 {
-			if propertyValueMatches(field, "Ja") {
-				categories = append(categories, "floodlit")
-			}
-		} else if field.ID == 1 {
+		if field.ID == 1 {
 			sportsField.Description = string(field.Value[1 : len(field.Value)-1])
+		} else if field.ID == 136 {
+			oppettiderURL := string(field.Value[1 : len(field.Value)-1])
+
+			_, err := url.ParseRequestURI(oppettiderURL)
+			if err != nil {
+				logger.Error("ignoring link to opening hours (invalid uri)", "err", err.Error())
+				continue
+			}
+
+			seeAlso = append(seeAlso, oppettiderURL)
 		} else if field.ID == 137 || field.ID == 138 || field.ID == 139 {
 			if propertyValueMatches(field, "Ja") {
 				isIceRink = true
@@ -171,6 +180,10 @@ func parseSportsField(ctx context.Context, feature domain.Feature) (*domain.Spor
 			if !ok {
 				return nil, fmt.Errorf("unknown public access value: %s", paValue)
 			}
+		} else if field.ID == 279 {
+			if propertyValueMatches(field, "Ja") {
+				categories = append(categories, "floodlit")
+			}
 		}
 	}
 
@@ -186,13 +199,17 @@ func parseSportsField(ctx context.Context, feature domain.Feature) (*domain.Spor
 		sportsField.Category = categories
 	}
 
+	if len(seeAlso) > 0 {
+		sportsField.SeeAlso = seeAlso
+	}
+
 	return sportsField, nil
 }
 
 func convertDBSportsFieldToFiwareSportsField(field domain.SportsField) []entities.EntityDecoratorFunc {
 
 	attributes := append(
-		make([]entities.EntityDecoratorFunc, 0, 7),
+		make([]entities.EntityDecoratorFunc, 0, 13),
 		LocationMP(field.Geometry.Lines), Description(field.Description),
 		DateTimeIfNotZero(properties.DateCreated, field.DateCreated),
 		DateTimeIfNotZero(properties.DateModified, field.DateModified),
@@ -219,6 +236,10 @@ func convertDBSportsFieldToFiwareSportsField(field domain.SportsField) []entitie
 
 	if field.Source != "" {
 		attributes = append(attributes, Source(field.Source))
+	}
+
+	if len(field.SeeAlso) > 0 {
+		attributes = append(attributes, RefSeeAlso(field.SeeAlso))
 	}
 
 	return attributes
