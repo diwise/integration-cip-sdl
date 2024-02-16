@@ -239,7 +239,7 @@ func convertDBSportsFieldToFiwareSportsField(field domain.SportsField) []entitie
 	}
 
 	if len(field.SeeAlso) > 0 {
-		attributes = append(attributes, RefSeeAlso(field.SeeAlso))
+		attributes = append(attributes, TextList("seeAlso", field.SeeAlso))
 	}
 
 	return attributes
