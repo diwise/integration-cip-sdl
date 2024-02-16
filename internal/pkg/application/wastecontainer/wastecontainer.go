@@ -12,13 +12,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/lestrrat-go/jwx/jwt"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
-	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
 )
 
@@ -84,7 +83,7 @@ func New(ctx context.Context, oauthClientID, oauthClientSecret, oauthTokenURL st
 		return nil, fmt.Errorf("an invalid token was returned from %s", oauthTokenURL)
 	}
 
-	tenant := getDefaultTenant(token)
+	tenant := env.GetVariableOrDefault(ctx, "DEFAULT_TENANT", "default")
 
 	return &Client{
 		clientcredentialsConfig: oauthConfig,
@@ -93,21 +92,6 @@ func New(ctx context.Context, oauthClientID, oauthClientSecret, oauthTokenURL st
 		},
 		tenant: tenant,
 	}, nil
-}
-
-func getDefaultTenant(token *oauth2.Token) string {
-	t, err := jwt.ParseString(token.AccessToken, jwt.WithValidate(false))
-	if err != nil {
-		return "default"
-	}
-	tenants := t.PrivateClaims()["tenants"].([]interface{})
-	if len(tenants) == 0 {
-		return "default"
-	}
-	if t, ok := tenants[0].(string); ok {
-		return t
-	}
-	return "default"
 }
 
 func (c *Client) Run(ctx context.Context, wcUrl, diwiseUrl string) error {
