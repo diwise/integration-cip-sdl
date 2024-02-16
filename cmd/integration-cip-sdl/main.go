@@ -50,10 +50,10 @@ func main() {
 	if featureIsEnabled(ctx, "wastecontainer") {
 		wasteContainerMapURL := env.GetVariableOrDie(ctx, "WASTECONTAINER_URL", "URL to map with wastecontainers")
 		diwiseEntitiesEndpoint := env.GetVariableOrDie(ctx, "DIWISE_ENTITIES_ENDPOINT", "URL to diwise entities endpoint")
-		timeInterval := env.GetVariableOrDefault(ctx, "WASTECONTAINER_POLLING_INTERVALL", "58")
+		timeInterval := env.GetVariableOrDefault(ctx, "WASTECONTAINER_POLLING_INTERVAL", "58")
 		parsedTime, err := strconv.ParseInt(timeInterval, 0, 64)
 		if err != nil {
-			fatal(ctx, "WASTECONTAINER_POLLING_INTERVALL must be set to a valid integer", err)
+			fatal(ctx, "WASTECONTAINER_POLLING_INTERVAL must be set to a valid integer", err)
 		}
 		go SetupAndRunWasteContainer(ctx, wasteContainerMapURL, diwiseEntitiesEndpoint, int(parsedTime))
 	}
