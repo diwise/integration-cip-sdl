@@ -66,6 +66,7 @@ type SportsField struct {
 	DateModified     time.Time
 	DateLastPrepared time.Time
 	Source           string
+	SeeAlso          []string
 	ManagedBy        string
 	Owner            string
 }
