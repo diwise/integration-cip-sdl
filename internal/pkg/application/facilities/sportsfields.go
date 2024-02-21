@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/diwise/context-broker/pkg/datamodels/diwise"
@@ -140,11 +141,15 @@ func parseSportsField(ctx context.Context, feature domain.Feature) (*domain.Spor
 	var ignoreThisField bool = true
 	var isIceRink bool = false
 
+	stringValue := func(v json.RawMessage) string {
+		return strings.ReplaceAll(string(v[1:len(v.Value)-1]), "\\", "")
+	}
+
 	for _, field := range fields {
 		if field.ID == 1 {
-			sportsField.Description = string(field.Value[1 : len(field.Value)-1])
+			sportsField.Description = stringValue(field.Value)
 		} else if field.ID == 136 {
-			oppettiderURL := string(field.Value[1 : len(field.Value)-1])
+			oppettiderURL := stringValue(field.Value)
 
 			_, err := url.ParseRequestURI(oppettiderURL)
 			if err != nil {
@@ -173,7 +178,7 @@ func parseSportsField(ctx context.Context, feature domain.Feature) (*domain.Spor
 				"Särskilda öppettider": "opening-hours",
 				"Utanför skoltid":      "after-school",
 			}
-			paValue := string(field.Value[1 : len(field.Value)-1])
+			paValue := stringValue(field.Value)
 
 			var ok bool
 			sportsField.PublicAccess, ok = publicAccess[paValue]
