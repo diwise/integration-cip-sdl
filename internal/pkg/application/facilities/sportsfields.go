@@ -142,7 +142,7 @@ func parseSportsField(ctx context.Context, feature domain.Feature) (*domain.Spor
 	var isIceRink bool = false
 
 	stringValue := func(v json.RawMessage) string {
-		return strings.ReplaceAll(string(v[1:len(v.Value)-1]), "\\", "")
+		return strings.ReplaceAll(string(v[1:len(v)-1]), "\\", "")
 	}
 
 	for _, field := range fields {
