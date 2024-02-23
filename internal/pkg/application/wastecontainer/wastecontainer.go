@@ -22,11 +22,14 @@ import (
 )
 
 type WasteContainer struct {
-	ID          string   `json:"id"`
-	Type        string   `json:"type"`
-	Description string   `json:"description"`
-	Location    Location `json:"location"`
-	Tenant      string   `json:"tenant"`
+	ID          string    `json:"id"`
+	Type        string    `json:"type"`
+	Description string    `json:"description"`
+	Department  string    `json:"department"`
+	ModifiedAt  time.Time `json:"modifiedAt"`
+	Capacity    int32     `json:"capacity"`
+	Location    Location  `json:"location"`
+	Tenant      string    `json:"tenant"`
 }
 
 type Location struct {
@@ -130,6 +133,9 @@ func (c *Client) convert(fc FeatureCollection) []WasteContainer {
 			ID:          strconv.Itoa(f.Properties.ID),
 			Type:        "WasteContainer",
 			Description: f.Properties.Type,
+			Department:  f.Properties.Department,
+			ModifiedAt:  f.Properties.ModifiedAt,
+			Capacity:    f.Properties.Capacity,
 			Location: Location{
 				Lat: f.Geometry.Coordinates[1],
 				Lon: f.Geometry.Coordinates[0],
