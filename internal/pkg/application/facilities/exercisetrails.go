@@ -236,6 +236,9 @@ func parseExerciseTrail(ctx context.Context, feature domain.Feature) (*domain.Ex
 			if liftType, ok := knownTypes[string(field.Value[1:len(field.Value)-1])]; ok {
 				categories = append(categories, liftType)
 			}
+		} else if field.ID == 294 {
+			notes := string(field.Value[1 : len(field.Value)-1])
+			trail.Annotations = strings.ReplaceAll(notes, "\\/", "/")
 		}
 	}
 
@@ -259,7 +262,7 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 	}
 
 	attributes := append(
-		make([]entities.EntityDecoratorFunc, 0, 17),
+		make([]entities.EntityDecoratorFunc, 0, 18),
 		LocationLS(trail.Geometry.Lines), Description(trail.Description),
 		DateTimeIfNotZero(properties.DateCreated, trail.DateCreated),
 		DateTimeIfNotZero(properties.DateModified, trail.DateModified),
@@ -269,6 +272,10 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 		Number("length", trail.Length),
 		Description(trail.Description),
 	)
+
+	if trail.Annotations != "" {
+		attributes = append(attributes, Text("annotations", trail.Annotations))
+	}
 
 	if trail.AreaServed != "" {
 		attributes = append(attributes, Text("areaServed", trail.AreaServed))
