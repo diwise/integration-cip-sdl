@@ -1,6 +1,6 @@
 module github.com/diwise/integration-cip-sdl
 
-go 1.21
+go 1.22
 
 require (
 	github.com/diwise/context-broker v0.0.0-20240130082207-898bbeafc913
