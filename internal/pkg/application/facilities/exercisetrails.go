@@ -28,6 +28,7 @@ const (
 	IceSkatingTrail string = "Långfärdsskridskoled"
 	SkiLift         string = "Skidlift"
 	SkiSlope        string = "Skidpist"
+	SkiTrack        string = "Skidspår"
 )
 
 func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient client.ContextBrokerClient, sourceURL string, featureCollection domain.FeatureCollection) error {
@@ -39,7 +40,7 @@ func (s *storageImpl) StoreTrailsFromSource(ctx context.Context, ctxBrokerClient
 
 	isSupportedType := func(theType string) bool {
 		type StringSet map[string]struct{}
-		_, theTypeIsInSet := StringSet{BikeTrail: {}, ExerciseTrail: {}, IceSkatingTrail: {}, SkiLift: {}, SkiSlope: {}}[theType]
+		_, theTypeIsInSet := StringSet{BikeTrail: {}, ExerciseTrail: {}, IceSkatingTrail: {}, SkiLift: {}, SkiSlope: {}, SkiTrack: {}}[theType]
 		return theTypeIsInSet
 	}
 
