@@ -39,7 +39,7 @@ func TestTrailDataLoad(t *testing.T) {
 	err := storage.StoreTrailsFromSource(ctx, ctxBrokerMock, server.URL, fc)
 
 	is.NoErr(err)
-	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
+	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 2)
 }
 
 func TestExerciseTrail(t *testing.T) {
@@ -59,7 +59,7 @@ func TestExerciseTrail(t *testing.T) {
 	err = storage.StoreTrailsFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
 	is.NoErr(err)
 
-	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
+	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 2)
 	e := ctxBrokerMock.CreateEntityCalls()[0].Entity
 	entityJSON, _ := json.Marshal(e)
 
@@ -89,7 +89,7 @@ func TestExerciseTrailContainsManagedByAndOwnerProperties(t *testing.T) {
 	err = storage.StoreTrailsFromSource(ctx, ctxBrokerMock, server.URL, *featureCollection)
 	is.NoErr(err)
 
-	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
+	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 2)
 	e := ctxBrokerMock.CreateEntityCalls()[0].Entity
 	entityJSON, _ := json.Marshal(e)
 
