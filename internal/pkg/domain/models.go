@@ -37,7 +37,7 @@ type ExerciseTrail struct {
 	ID               string
 	Name             string
 	Description      string
-	Annotations      string
+	Annotations      *string
 	Category         []string
 	Length           float64
 	AreaServed       string
