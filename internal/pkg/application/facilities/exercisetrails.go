@@ -239,7 +239,8 @@ func parseExerciseTrail(ctx context.Context, feature domain.Feature) (*domain.Ex
 			}
 		} else if field.ID == 294 {
 			notes := string(field.Value[1 : len(field.Value)-1])
-			trail.Annotations = strings.ReplaceAll(notes, "\\/", "/")
+			notes = strings.ReplaceAll(notes, "\\/", "/")
+			trail.Annotations = &notes
 		}
 	}
 
@@ -274,8 +275,8 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 		Description(trail.Description),
 	)
 
-	if trail.Annotations != "" {
-		attributes = append(attributes, Text("annotations", trail.Annotations))
+	if trail.Annotations != nil {
+		attributes = append(attributes, Text("annotations", *trail.Annotations))
 	}
 
 	if trail.AreaServed != "" {
