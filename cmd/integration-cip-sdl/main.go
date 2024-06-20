@@ -13,6 +13,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/application/citywork"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/application/facilities"
+	"github.com/diwise/integration-cip-sdl/internal/pkg/application/wastecontainer"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -44,6 +45,17 @@ func main() {
 		}
 
 		go SetupAndRunFacilities(ctx, facilitiesURL, facilitiesApiKey, int(parsedTime), ctxBroker)
+	}
+
+	if featureIsEnabled(ctx, "wastecontainer") {
+		wasteContainerMapURL := env.GetVariableOrDie(ctx, "WASTECONTAINER_URL", "URL to map with wastecontainers")
+		diwiseEntitiesEndpoint := env.GetVariableOrDie(ctx, "DIWISE_ENTITIES_ENDPOINT", "URL to diwise entities endpoint")
+		timeInterval := env.GetVariableOrDefault(ctx, "WASTECONTAINER_POLLING_INTERVAL", "58")
+		parsedTime, err := strconv.ParseInt(timeInterval, 0, 64)
+		if err != nil {
+			fatal(ctx, "WASTECONTAINER_POLLING_INTERVAL must be set to a valid integer", err)
+		}
+		go SetupAndRunWasteContainer(ctx, wasteContainerMapURL, diwiseEntitiesEndpoint, int(parsedTime))
 	}
 
 	if featureIsEnabled(ctx, "citywork") {
@@ -99,6 +111,27 @@ func setupRouterAndWaitForConnections(ctx context.Context, port string) {
 	err := http.ListenAndServe(":"+port, r)
 	if err != nil {
 		fatal(ctx, "failed to start router", err)
+	}
+}
+
+func SetupAndRunWasteContainer(ctx context.Context, wasteContainerMapURL, diwiseEntitiesEndpoint string, timeInterval int) {
+	logger := logging.GetFromContext(ctx)
+
+	tokenURL := env.GetVariableOrDie(ctx, "OAUTH2_TOKEN_URL", "a valid oauth2 token URL")
+	clientID := env.GetVariableOrDie(ctx, "OAUTH2_CLIENT_ID", "a valid oauth2 client id")
+	clientSecret := env.GetVariableOrDie(ctx, "OAUTH2_CLIENT_SECRET", "a valid oauth2 client secret")
+
+	wc, err := wastecontainer.New(ctx, clientID, clientSecret, tokenURL)
+	if err != nil {
+		panic(err)
+	}
+
+	for {
+		err = wc.Run(ctx, wasteContainerMapURL, diwiseEntitiesEndpoint)
+		if err != nil {
+			logger.Error("failed to retrieve and post waste container information", "err", err.Error())
+		}
+		time.Sleep(time.Duration(timeInterval) * time.Minute)
 	}
 }
 
