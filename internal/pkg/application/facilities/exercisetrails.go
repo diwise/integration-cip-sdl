@@ -170,10 +170,11 @@ func parseExerciseTrail(ctx context.Context, feature domain.Feature) (*domain.Ex
 			length, _ := strconv.ParseInt(string(field.Value[0:len(field.Value)]), 10, 64)
 			trail.Length = float64(length) / 1000.0
 		} else if field.ID == 100 {
-			elevation, _ := strconv.ParseInt(string(field.Value[0:len(field.Value)]), 10, 64)
-			//TODO: Support an elevation property on exercisetrail entities
-			//trail.Elevation = float64(elevation) / 1000.0
-			log.Warn("ignored elevation on exercise trail", slog.String("name", trail.Name), slog.Int64("elevation", elevation))
+			elevation, err := strconv.ParseInt(string(field.Value[0:len(field.Value)]), 10, 64)
+			if err != nil {
+				log.Error("failed to parse elevation gain on exercise trail", slog.String("name", trail.Name), slog.String("err", err.Error()))
+			}
+			trail.ElevationGain = float64(elevation)
 		} else if field.ID == 102 {
 			openStatus := map[string]string{"Ja": "open", "Nej": "closed"}
 			trail.Status = openStatus[string(field.Value[1:len(field.Value)-1])]
@@ -204,6 +205,17 @@ func parseExerciseTrail(ctx context.Context, feature domain.Feature) (*domain.Ex
 			trail.Difficulty = diff / 4.0
 		} else if field.ID == 110 {
 			trail.Description = string(field.Value[1 : len(field.Value)-1])
+		} else if field.ID == 114 {
+			trailTypes := map[string]string{
+				"Crosscountry": "bike-track-xc",
+				"Enduro":       "bike-track-enduro",
+				"Flow":         "bike-track-flow",
+			}
+
+			trailType, ok := trailTypes[string(field.Value[1:len(field.Value)-1])]
+			if ok {
+				categories = append(categories, trailType)
+			}
 		} else if field.ID == 134 {
 			trail.AreaServed = string(field.Value[1 : len(field.Value)-1])
 		} else if field.ID == 248 || field.ID == 250 {
@@ -238,8 +250,16 @@ func parseExerciseTrail(ctx context.Context, feature domain.Feature) (*domain.Ex
 				categories = append(categories, liftType)
 			}
 		} else if field.ID == 294 {
-			notes := string(field.Value[1 : len(field.Value)-1])
-			trail.Annotations = strings.ReplaceAll(notes, "\\/", "/")
+			notes := strings.ReplaceAll(string(field.Value[1:len(field.Value)-1]), "\\/", "/")
+			trail.Annotations = &notes
+		} else if field.ID == 313 {
+			widthValue, ok := strings.CutSuffix(string(field.Value[1:len(field.Value)-1]), " cm")
+			if ok {
+				trail.Width, err = strconv.ParseFloat(widthValue, 32)
+				if err != nil {
+					return nil, fmt.Errorf("invalid trail width value \"%s\": %s", widthValue, err.Error())
+				}
+			}
 		}
 	}
 
@@ -263,7 +283,7 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 	}
 
 	attributes := append(
-		make([]entities.EntityDecoratorFunc, 0, 18),
+		make([]entities.EntityDecoratorFunc, 0, 21),
 		LocationLS(trail.Geometry.Lines), Description(trail.Description),
 		DateTimeIfNotZero(properties.DateCreated, trail.DateCreated),
 		DateTimeIfNotZero(properties.DateModified, trail.DateModified),
@@ -274,8 +294,8 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 		Description(trail.Description),
 	)
 
-	if trail.Annotations != "" {
-		attributes = append(attributes, Text("annotations", trail.Annotations))
+	if trail.Annotations != nil {
+		attributes = append(attributes, Text("annotations", *trail.Annotations))
 	}
 
 	if trail.AreaServed != "" {
@@ -298,6 +318,10 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 		attributes = append(attributes, Status(trail.Status))
 	}
 
+	if trail.Width > 0.1 {
+		attributes = append(attributes, Number("width", math.Round(trail.Width*10)/10, properties.UnitCode("CMT")))
+	}
+
 	if trail.ManagedBy != "" {
 		attributes = append(attributes, entities.R("managedBy", relationships.NewSingleObjectRelationship(trail.ManagedBy)))
 	}
@@ -309,6 +333,10 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 	if trail.Difficulty >= 0 {
 		// Add difficulty rounded to one decimal
 		attributes = append(attributes, Number("difficulty", math.Round(trail.Difficulty*100)/100))
+	}
+
+	if trail.ElevationGain > 0.1 {
+		attributes = append(attributes, Number("elevationGain", math.Round(trail.ElevationGain*10)/10, properties.UnitCode("MTR")))
 	}
 
 	if len(trail.SeeAlso) > 0 {
