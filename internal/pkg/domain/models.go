@@ -40,6 +40,8 @@ type ExerciseTrail struct {
 	Annotations      *string
 	Category         []string
 	Length           float64
+	Width            float64
+	ElevationGain    float64
 	AreaServed       string
 	PublicAccess     string
 	Geometry         LineString
