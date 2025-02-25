@@ -16,6 +16,7 @@ type sdlResponse struct {
 		} `json:"properties"`
 	} `json:"crs"`
 	Features []sdlFeature `json:"features"`
+	Error    string       `json:"error"`
 }
 
 type sdlFeature struct {

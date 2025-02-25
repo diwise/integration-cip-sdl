@@ -23,14 +23,18 @@ type Client interface {
 }
 
 type clientImpl struct {
-	apiKey    string
-	sourceURL string
+	apiKey     string
+	sourceURL  string
+	httpClient http.Client
 }
 
 func NewClient(ctx context.Context, apikey, sourceURL string) Client {
 	return &clientImpl{
 		apiKey:    apikey,
 		sourceURL: sourceURL,
+		httpClient: http.Client{
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		},
 	}
 }
 
@@ -41,10 +45,6 @@ func (c *clientImpl) Get(ctx context.Context) (*domain.FeatureCollection, error)
 
 	log := logging.GetFromContext(ctx)
 
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
 	apiReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.sourceURL+"/list", nil)
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (c *clientImpl) Get(ctx context.Context) (*domain.FeatureCollection, error)
 
 	apiReq.Header.Set("apikey", c.apiKey)
 
-	apiResponse, err := httpClient.Do(apiReq)
+	apiResponse, err := c.httpClient.Do(apiReq)
 	if err != nil {
 		log.Error("failed to retrieve facilities information", "err", err.Error())
 		return nil, err

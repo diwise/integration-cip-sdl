@@ -73,7 +73,7 @@ func TestThatGetAndPublishFailsOnImproperJSON(t *testing.T) {
 	is.True(err != nil)
 }
 
-func testSetup(t *testing.T, statusCode int, body string) (*is.I, CityWorkSvc, *test.ContextBrokerClientMock) {
+func testSetup(t *testing.T, statusCode int, body string) (*is.I, *cwimpl, *test.ContextBrokerClientMock) {
 	is := is.New(t)
 	s := setupMockServiceThatReturns(statusCode, body)
 	sdlc := sdlClient{
@@ -90,8 +90,9 @@ func testSetup(t *testing.T, statusCode int, body string) (*is.I, CityWorkSvc, *
 	}
 
 	cw := NewCityWorkService(context.Background(), &sdlc, 1, ctxBroker)
+	impl := cw.(*cwimpl)
 
-	return is, cw, ctxBroker
+	return is, impl, ctxBroker
 }
 
 func setupMockServiceThatReturns(statusCode int, body string) *httptest.Server {

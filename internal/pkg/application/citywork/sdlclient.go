@@ -15,7 +15,7 @@ import (
 
 //go:generate moq -rm -out sdlclient_mock.go . SdlClient
 
-var sdltracer = otel.Tracer("sdl-trafficinfo-client")
+var sdltracer = otel.Tracer("sdl-cityworks-client")
 
 type SdlClient interface {
 	Get(cxt context.Context) (*sdlResponse, error)
@@ -23,17 +23,21 @@ type SdlClient interface {
 
 type sdlClient struct {
 	sundsvallvaxerURL string
+	httpClient        http.Client
 }
 
 func NewSdlClient(ctx context.Context, sundsvallvaxerURL string) SdlClient {
 	return &sdlClient{
 		sundsvallvaxerURL: sundsvallvaxerURL,
+		httpClient: http.Client{
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		},
 	}
 }
 
 func (c *sdlClient) Get(ctx context.Context) (*sdlResponse, error) {
 	var err error
-	ctx, span := sdltracer.Start(ctx, "get-sdl-traffic-information")
+	ctx, span := sdltracer.Start(ctx, "get-sdl-cityworks-info")
 	defer func() {
 		if err != nil {
 			span.RecordError(err)
@@ -43,18 +47,14 @@ func (c *sdlClient) Get(ctx context.Context) (*sdlResponse, error) {
 
 	log := logging.GetFromContext(ctx)
 
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
 	apiReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.sundsvallvaxerURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	apiResponse, err := httpClient.Do(apiReq)
+	apiResponse, err := c.httpClient.Do(apiReq)
 	if err != nil {
-		log.Error("failed to retrieve traffic information", "err", err.Error())
+		log.Error("failed to retrieve citywork information", "err", err.Error())
 		return nil, err
 	}
 
@@ -82,6 +82,10 @@ func (c *sdlClient) Get(ctx context.Context) (*sdlResponse, error) {
 	err = json.Unmarshal(body, &m)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal model")
+	}
+
+	if len(m.Error) > 0 {
+		return nil, fmt.Errorf("endpoint returned 200 OK with err body: (%s)", m.Error)
 	}
 
 	return &m, err

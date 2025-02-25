@@ -26,7 +26,7 @@ const serviceName string = "integration-cip-sdl"
 func main() {
 	serviceVersion := buildinfo.SourceVersion()
 
-	ctx, _, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
+	ctx, _, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion, "json")
 	defer cleanup()
 
 	contextBrokerURL := env.GetVariableOrDie(ctx, "CONTEXT_BROKER_URL", "Context Broker URL")

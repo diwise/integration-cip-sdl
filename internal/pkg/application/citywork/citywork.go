@@ -18,21 +18,17 @@ import (
 
 type CityWorkSvc interface {
 	Start(ctx context.Context) error
-	//TODO: This is not supposed to be a public interface (only exposed for testing it seems)
-	getAndPublishCityWork(ctx context.Context) error
 }
 
 func NewCityWorkService(ctx context.Context, s SdlClient, timeInterval int, c client.ContextBrokerClient) CityWorkSvc {
-	return &cw{
-		log:           logging.GetFromContext(ctx),
+	return &cwimpl{
 		sdlClient:     s,
 		timeInterval:  timeInterval,
 		contextbroker: c,
 	}
 }
 
-type cw struct {
-	log           *slog.Logger
+type cwimpl struct {
 	sdlClient     SdlClient
 	timeInterval  int
 	contextbroker client.ContextBrokerClient
@@ -40,7 +36,7 @@ type cw struct {
 
 var previous map[string]string = make(map[string]string)
 
-func (cw *cw) Start(ctx context.Context) error {
+func (cw *cwimpl) Start(ctx context.Context) error {
 	for {
 		err := cw.getAndPublishCityWork(ctx)
 		sleepDuration := time.Duration(cw.timeInterval) * time.Minute
@@ -56,7 +52,7 @@ func (cw *cw) Start(ctx context.Context) error {
 	}
 }
 
-func (cw *cw) getAndPublishCityWork(ctx context.Context) error {
+func (cw *cwimpl) getAndPublishCityWork(ctx context.Context) error {
 	response, err := cw.sdlClient.Get(ctx)
 	logger := logging.GetFromContext(ctx)
 	if err != nil {
