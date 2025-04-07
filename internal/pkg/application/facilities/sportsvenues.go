@@ -13,11 +13,13 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/client"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
-	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
 	"github.com/diwise/context-broker/pkg/ngsild/types/relationships"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+
+	//lint:ignore ST1001 it is OK when we do it
+	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 )
 
 var ErrSportsVenueIsOfIgnoredType error = errors.New("sports venue is of non supported type")

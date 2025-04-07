@@ -15,11 +15,13 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/client"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
-	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
 	"github.com/diwise/context-broker/pkg/ngsild/types/relationships"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+
+	//lint:ignore ST1001 it is OK when we do it
+	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 )
 
 const (
@@ -284,14 +286,13 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail) []entities.
 
 	attributes := append(
 		make([]entities.EntityDecoratorFunc, 0, 21),
-		LocationLS(trail.Geometry.Lines), Description(trail.Description),
+		LocationLS(trail.Geometry.Lines),
 		DateTimeIfNotZero(properties.DateCreated, trail.DateCreated),
 		DateTimeIfNotZero(properties.DateModified, trail.DateModified),
 		DateTimeIfNotZero("dateLastPreparation", trail.DateLastPrepared),
 		Text("paymentRequired", boolMap[trail.PaymentRequired]),
-		Name(trail.Name),
+		Name(trail.Name), Description(trail.Description),
 		Number("length", trail.Length),
-		Description(trail.Description),
 	)
 
 	if trail.Annotations != nil {
