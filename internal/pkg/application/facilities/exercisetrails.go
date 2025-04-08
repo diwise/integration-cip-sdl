@@ -14,6 +14,7 @@ import (
 	"github.com/diwise/context-broker/pkg/datamodels/diwise"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
+	"github.com/diwise/context-broker/pkg/ngsild/geojson"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
@@ -301,6 +302,17 @@ func entityProperties(e types.Entity) map[string]any {
 					// Handle other types if needed
 				}
 			}
+
+			if attributeType == "GeoProperty" {
+				switch v := contents.(type) {
+				case *geojson.GeoJSONProperty:
+					if lineString, ok := v.Val.(*geojson.GeoJSONPropertyLineString); ok {
+						entiyMap[attributeName] = lineString.Coordinates
+					}
+				default:
+					// Handle other types if needed
+				}
+			}
 		})
 	}
 	return entiyMap
@@ -317,7 +329,7 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail, e types.Ent
 
 	attributes := append(
 		make([]entities.EntityDecoratorFunc, 0, 21),
-		LocationLS(trail.Geometry.Lines),
+
 		DateTimeIfNotZero(properties.DateCreated, trail.DateCreated),
 		DateTimeIfNotZero(properties.DateModified, trail.DateModified),
 		DateTimeIfNotZero("dateLastPreparation", trail.DateLastPrepared),
@@ -352,11 +364,12 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail, e types.Ent
 		return true
 	}
 
-	shouldAppendNumber := func(key string, value float64) bool {
-		approximatelyEqual := func(a, b, epsilon float64) bool {
-			return math.Abs(a-b) <= epsilon
-		}
+	approximatelyEqual := func(a, b, epsilon float64) bool {
+		v := math.Abs(a - b)
+		return v <= epsilon
+	}
 
+	shouldAppendNumber := func(key string, value float64) bool {
 		if v, ok := m[key]; ok { // existing value?
 			if num, ok := v.(float64); ok && approximatelyEqual(num, value, 1e-9) { // same value?
 				return false
@@ -379,6 +392,34 @@ func convertDBTrailToFiwareExerciseTrail(trail domain.ExerciseTrail, e types.Ent
 			}
 		}
 		return true
+	}
+
+	shouldAppendLocation := func(key string, value [][]float64) bool {
+		if v, ok := m[key]; ok {
+			if geo, ok := v.([][]float64); ok {
+				if len(geo) == len(value) {
+					for i, v := range geo {
+						if len(v) != len(value[i]) {
+							return true
+						}
+
+						a := value[i][0]
+						b := value[i][1]
+
+						if !approximatelyEqual(v[0], a, 0.00001) || !approximatelyEqual(v[1], b, 0.00001) {
+							return true
+						}
+					}
+					return false
+				}
+			}
+		}
+
+		return true
+	}
+
+	if len(trail.Geometry.Lines) > 0 && shouldAppendLocation("location", trail.Geometry.Lines) {
+		attributes = append(attributes, LocationLS(trail.Geometry.Lines))
 	}
 
 	if shouldAppendStr("name", trail.Name) {
