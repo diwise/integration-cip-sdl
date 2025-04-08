@@ -15,6 +15,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	test "github.com/diwise/context-broker/pkg/test"
 	"github.com/diwise/integration-cip-sdl/internal/pkg/domain"
 	"github.com/matryer/is"
@@ -40,6 +41,43 @@ func TestTrailDataLoad(t *testing.T) {
 
 	is.NoErr(err)
 	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 2)
+}
+
+func TestFacilitiesLoad(t *testing.T) {
+	f, err := os.Open("../../../../.testdata/facilities.json")
+	if err != nil {
+		t.Skip("skipping test, file not found")
+	}
+	defer f.Close()
+	response, _ := io.ReadAll(f)
+
+	ngsif, err := os.Open("../../../../.testdata/ngsi-703.json")
+	if err != nil {
+		t.Skip("skipping test, file not found")
+	}
+	defer ngsif.Close()
+	ngsi703, _ := io.ReadAll(ngsif)
+
+	is, ctxBrokerMock, server := testSetup(t, "", http.StatusOK, string(response))
+	ctx := context.Background()
+
+	ctxBrokerMock.CreateEntityFunc = func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
+		return &ngsild.CreateEntityResult{}, nil
+	}
+
+	ctxBrokerMock.RetrieveEntityFunc = func(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error) {
+		e, err := entities.NewFromJSON(ngsi703)
+		return e, err
+	}
+
+	fc := domain.FeatureCollection{}
+	json.Unmarshal([]byte(response), &fc)
+
+	storage := NewStorage(ctx)
+	err = storage.StoreTrailsFromSource(ctx, ctxBrokerMock, server.URL, fc)
+
+	is.NoErr(err)
+	is.Equal(len(ctxBrokerMock.CreateEntityCalls()), 1)
 }
 
 func TestExerciseTrail(t *testing.T) {
@@ -151,6 +189,9 @@ func testSetup(t *testing.T, requestBody string, responseCode int, responseBody 
 		},
 		DeleteEntityFunc: func(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error) {
 			return &ngsild.DeleteEntityResult{}, nil
+		},
+		RetrieveEntityFunc: func(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error) {
+			return nil, ngsierrors.ErrNotFound
 		},
 	}
 
